@@ -11,6 +11,30 @@ For IKT 460 (RL) base Chinese Checkers
 - ~~A pin maynot go into a 'coloured triangle' unless it is either its source or its destination~~ A pin may go into any coloured region, provided it is a valid move
 - There is no capturing
 
+## Multi system
+
+game.py :: server side (run on terminal 1)
+
+player.py :: client side (run on terminal 2/3/4... Each terminal is a player.)
+
+In game.py ::
+  Options are Create/Status/Quit
+  Typing Create + Enter - creates new game
+  Typing Status + Enter - shows status of games in current session
+
+In player.py ::
+  Enter player name
+  Press Enter when you get message 'Press enter to send Start'
+
+  **You'll need to replace the code inside 'PLAYING LOGIC' to your own logic.**
+
+
+- You can see the scoring inside game.py
+- game log is stored in folder 'games'
+- get_state as player gives you access to game board, moves made by all players, timings, game status etc.
+- Change TURN_TIMEOUT_SEC and GAME_TIME_LIMIT_SEC accordingly for training. *Please let me know your average time taken per move and average total time to finish a game. Once I recieve responses from atleast 5 different teams, I will base the final values of these parameters accordingly.*
+
+
 ## single system
 Designed to be played on a single system (no separate teams joining from separate systems)
 
