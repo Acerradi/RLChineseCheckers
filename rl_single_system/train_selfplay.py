@@ -21,6 +21,7 @@ from rl_single_system.state_encoder import encode_observation
 from rl_single_system.action_space import ActionMapper
 from rl_single_system.rl_agent import PPOAgent
 from rl_single_system.reward import compute_progress_reward
+from rl_single_system.board_distance import precompute_all_pairs_shortest_paths
 
 from single_system.harald.rl_selfplay_wrapper_overnight import ChineseCheckersSelfPlayEnv
 
@@ -77,7 +78,7 @@ def extract_piece_position(piece: Any) -> int:
     raise ValueError(f"Could not extract position from piece={piece!r}")
 
 
-def compute_simple_state_info(obs: Dict[str, Any]) -> Dict[str, float]:
+def compute_simple_state_info(obs: Dict[str, Any], all_distances: Dict[int, Dict[int, int]]) -> Dict[str, float]:
     own_pieces = obs.get("own_pieces", [])
     goal_indices = set(obs.get("goal_indices", []))
 
@@ -90,14 +91,22 @@ def compute_simple_state_info(obs: Dict[str, Any]) -> Dict[str, float]:
         if pos in goal_indices:
             pieces_in_goal += 1
 
-        nearest_goal_dist = min(abs(pos - g) for g in goal_indices) if goal_indices else 0.0
+        if goal_indices:
+            reachable = [
+                all_distances[pos][g]
+                for g in goal_indices
+                if pos in all_distances and g in all_distances[pos]
+            ]
+            nearest_goal_dist = min(reachable) if reachable else 999.0
+        else:
+            nearest_goal_dist = 0.0
+
         total_distance += float(nearest_goal_dist)
 
     return {
         "pieces_in_goal": float(pieces_in_goal),
         "total_distance": float(total_distance),
     }
-
 
 def compute_gae(
     rewards: List[float],
@@ -129,7 +138,7 @@ def get_winner_from_info(info: Dict[str, Any]) -> Any:
 def make_env() -> ChineseCheckersSelfPlayEnv:
     return ChineseCheckersSelfPlayEnv(
         randomize_first_player=True,
-        max_turns=500,
+        max_turns=200,
         suppress_board_prints=True,
     )
 
@@ -210,6 +219,9 @@ def train(
 
     env = make_env()
     agent, mapper = build_agent_and_mapper(env, colour_to_idx, device)
+    all_distances, adjacency, neighbor_dist = precompute_all_pairs_shortest_paths(env.board)
+
+
 
     start_episode = 0
     if resume:
@@ -265,7 +277,7 @@ def train(
                 }
                 break
 
-            prev_state_info = compute_simple_state_info(obs)
+            prev_state_info = compute_simple_state_info(obs, all_distances)
 
             action_id, logprob, value = agent.act(encoded_obs, action_mask)
             action = mapper.decode_action(action_id)
@@ -287,9 +299,19 @@ def train(
             except Exception:
                 next_player_obs = obs
 
-            next_state_info = compute_simple_state_info(next_player_obs)
+            sample_idx = 48
+            print("Neighbors of 48:", adjacency.get(sample_idx, []))
+            print("Distance 48->37:", all_distances.get(48, {}).get(37))
+
+            next_state_info = compute_simple_state_info(next_player_obs, all_distances)
 
             winner = get_winner_from_info(final_info)
+
+            reason = final_info.get("reason", "unknown") if isinstance(final_info, dict) else "unknown"
+
+            if reason == "max_turns_reached":
+                episode_reward -= 100.0
+
             won = bool(done and winner == player)
             lost = bool(done and winner is not None and winner != player)
 
