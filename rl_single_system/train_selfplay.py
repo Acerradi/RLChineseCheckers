@@ -299,9 +299,7 @@ def train(
             except Exception:
                 next_player_obs = obs
 
-            sample_idx = 48
-            print("Neighbors of 48:", adjacency.get(sample_idx, []))
-            print("Distance 48->37:", all_distances.get(48, {}).get(37))
+
 
             next_state_info = compute_simple_state_info(next_player_obs, all_distances)
 
