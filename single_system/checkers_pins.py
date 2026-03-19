@@ -1,4 +1,10 @@
-from checkers_board import BoardPosition,HexBoard
+import sys
+import os
+
+# Add parent directory to path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from single_system.checkers_board import BoardPosition,HexBoard
 class Pin:
     """Represents a pin placed on the board by index."""
     def __init__(self, board: HexBoard, axialindex: int, id:int, color="red"):
@@ -82,7 +88,7 @@ class Pin:
 
 
     
-    def placePin(self, new_axialindex:int):
+    def placePin(self, new_axialindex:int, silent=False):
         """Move pin to a new index on the board."""
         if int(new_axialindex) < 0 or int(new_axialindex) >= len(self.board.cells):
             print("Pin index out of bounds for this board.")
@@ -100,6 +106,7 @@ class Pin:
         self.board.cells[self.axialindex].occupied = False
         self.axialindex = int(new_axialindex)
         self.board.cells[int(new_axialindex)].occupied = True
-        print('Pin placed successfully.')
+        if not silent:
+            print('Pin placed successfully.')
         return True
 

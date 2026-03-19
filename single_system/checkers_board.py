@@ -16,7 +16,7 @@ class HexBoard:
     A true hexagonal board on a hex lattice (axial coordinates).
     Radius R=4 => 61 cells (1 + 3*R*(R+1)).
     """
-    def __init__(self, R=4, hole_radius=18, spacing=34):
+    def __init__(self, R=4, hole_radius=18, spacing=34, silent=False):
         self.R = R
         self.hole_radius = hole_radius   # circle radius in pixels for each hole
         self.spacing = spacing           # distance between neighboring hex centers
@@ -30,7 +30,7 @@ class HexBoard:
         self._rows = []                  # rows grouped by r for ASCII
 
         self._generate_hexagon()
-        self._project_to_pixels()
+        self._project_to_pixels(silent=silent)
         self._build_rows_for_ascii()
 
     def _generate_hexagon(self):
@@ -76,14 +76,15 @@ class HexBoard:
         self.index_of = {(ax.q,ax.r): i for i, ax in enumerate(cells)}
         #print('index',self.index_of)
 
-    def _project_to_pixels(self):
+    def _project_to_pixels(self, silent=False):
         """Pointy-top axial -> pixel coordinates for Tk display."""
         cart = []
         for t in self.cells:
             x = t.x
             y = t.y
             cart.append((x, y))
-            print (f"Cell (q={t.q}, r={t.r}) -> (x={x}, y={y}), {self.spacing}* {t.q} + {t.r}, {t.postype}")
+            if silent:
+                print (f"Cell (q={t.q}, r={t.r}) -> (x={x}, y={y}), {self.spacing}* {t.q} + {t.r}, {t.postype}")
         self.cartesian = cart
 
     def _build_rows_for_ascii(self):

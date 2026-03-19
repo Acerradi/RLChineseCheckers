@@ -1,5 +1,16 @@
-from checkers_env import ChineseCheckersEnv
-from agents import RandomAgent
+
+import sys
+import os
+
+# Go two directories up
+sys.path.append(
+    os.path.abspath(
+        os.path.join(os.path.dirname(__file__), '..', '..')
+    )
+)
+
+from single_system.harald.checkers_env import ChineseCheckersEnv
+from single_system.harald.agents import RandomAgent
 
 
 def run_single_game(num_players=2, render=False):
@@ -31,7 +42,7 @@ def run_single_game(num_players=2, render=False):
     return env.winner
 
 
-def run_selfplay(num_games=100, num_players=2):
+def run_selfplay(num_games=100, num_players=2, render=False):
     results = {}
 
     for _ in range(num_games):
@@ -42,5 +53,5 @@ def run_selfplay(num_games=100, num_players=2):
 
 
 if __name__ == "__main__":
-    summary = run_selfplay(num_games=10, num_players=2)
+    summary = run_selfplay(num_games=1, num_players=2, render=True)
     print(summary)

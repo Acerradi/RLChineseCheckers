@@ -1,9 +1,21 @@
+
+import sys
+import os
+
+# Go two directories up
+sys.path.append(
+    os.path.abspath(
+        os.path.join(os.path.dirname(__file__), '..', '..')
+    )
+)
+
+
 from dataclasses import dataclass
 import random
 from typing import List, Dict, Optional, Any
 
-from checkers_board import HexBoard
-from checkers_pins import Pin
+from single_system.checkers_board import HexBoard
+from single_system.checkers_pins import Pin
 
 
 HALF_COLOURS_1 = ['red', 'lawn green', 'yellow']
@@ -169,7 +181,7 @@ class ChineseCheckersEnv:
                 f"Illegal move for player={colour}, pin_id={pin_id}, to={destination}"
             )
 
-        success = pin.placePin(destination)
+        success = pin.placePin(destination, silent=True)
         if not success:
             raise RuntimeError("Move failed in underlying game logic.")
 
@@ -208,7 +220,14 @@ class ChineseCheckersEnv:
         Replace this with your actual Chinese Checkers win test:
         all 10 pins of 'colour' must be in the target triangle.
         """
-        return False
+        target_colour = self.board.colour_opposites[colour]
+        target_axials = set(self.board.axial_of_colour(target_colour))
+
+        player_pins = self.get_player_pins(colour)
+
+        win = all(pin.axialindex in target_axials for pin in player_pins)
+
+        return win
 
     def _get_reward(self, acting_player: str) -> float:
         """
