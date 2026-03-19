@@ -19,10 +19,10 @@ if SINGLE_SYSTEM_DIR not in sys.path:
 
 
 # Local RL modules
-from state_encoder import encode_observation
-from action_space import ActionMapper
-from rl_agent import PPOAgent
-from reward import compute_progress_reward
+from rl_single_system.state_encoder import encode_observation
+from rl_single_system.action_space import ActionMapper
+from rl_single_system.rl_agent import PPOAgent
+from rl_single_system.reward import compute_progress_reward
 
 
 # CHANGE THIS IMPORT IF YOUR ENV CLASS NAME IS DIFFERENT
