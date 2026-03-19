@@ -26,7 +26,7 @@ from reward import compute_progress_reward
 
 
 # CHANGE THIS IMPORT IF YOUR ENV CLASS NAME IS DIFFERENT
-from rl_selfplay_wrapper_overnight import ChineseCheckersSelfPlayEnv
+from single_system.harald.rl_selfplay_wrapper_overnight import ChineseCheckersSelfPlayEnv
 
 
 MODELS_DIR = os.path.join(REPO_ROOT, "models")
