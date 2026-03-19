@@ -381,7 +381,7 @@ def train(
 if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     train(
-        num_episodes=5000,
+        num_episodes=50000, #Episode number to stop at
         device=device,
         resume=True,
         save_every=50,
