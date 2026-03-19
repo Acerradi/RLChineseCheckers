@@ -5,11 +5,10 @@ from typing import Any, Dict, List, Tuple
 import numpy as np
 import torch
 
-
 # Allow imports from repo root and "single system"
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 REPO_ROOT = os.path.abspath(os.path.join(CURRENT_DIR, ".."))
-SINGLE_SYSTEM_DIR = os.path.join(REPO_ROOT, "single system")
+SINGLE_SYSTEM_DIR = os.path.join(REPO_ROOT, "single_system")
 
 if REPO_ROOT not in sys.path:
     sys.path.append(REPO_ROOT)
@@ -17,15 +16,12 @@ if REPO_ROOT not in sys.path:
 if SINGLE_SYSTEM_DIR not in sys.path:
     sys.path.append(SINGLE_SYSTEM_DIR)
 
-
 # Local RL modules
 from rl_single_system.state_encoder import encode_observation
 from rl_single_system.action_space import ActionMapper
 from rl_single_system.rl_agent import PPOAgent
 from rl_single_system.reward import compute_progress_reward
 
-
-# CHANGE THIS IMPORT IF YOUR ENV CLASS NAME IS DIFFERENT
 from single_system.harald.rl_selfplay_wrapper_overnight import ChineseCheckersSelfPlayEnv
 
 
@@ -64,10 +60,6 @@ def load_checkpoint(agent: PPOAgent, path: str, device: str = "cpu") -> int:
 
 
 def extract_piece_position(piece: Any) -> int:
-    """
-    Tries to extract a board position from various possible own_pieces formats.
-    Adjust if your environment uses a different structure.
-    """
     if isinstance(piece, dict):
         if "position" in piece:
             return piece["position"]
@@ -76,10 +68,8 @@ def extract_piece_position(piece: Any) -> int:
         if "axial" in piece:
             return piece["axial"]
 
-    if isinstance(piece, (tuple, list)):
-        # common patterns: (pin_id, pos) or [pin_id, pos]
-        if len(piece) >= 2:
-            return piece[1]
+    if isinstance(piece, (tuple, list)) and len(piece) >= 2:
+        return piece[1]
 
     if isinstance(piece, int):
         return piece
@@ -88,14 +78,6 @@ def extract_piece_position(piece: Any) -> int:
 
 
 def compute_simple_state_info(obs: Dict[str, Any]) -> Dict[str, float]:
-    """
-    Basic shaped-reward summary.
-
-    This uses a rough distance proxy:
-      min(abs(pos - goal)) over goal indices
-
-    Later, you should replace that with a true board distance metric.
-    """
     own_pieces = obs.get("own_pieces", [])
     goal_indices = set(obs.get("goal_indices", []))
 
@@ -108,11 +90,7 @@ def compute_simple_state_info(obs: Dict[str, Any]) -> Dict[str, float]:
         if pos in goal_indices:
             pieces_in_goal += 1
 
-        if goal_indices:
-            nearest_goal_dist = min(abs(pos - g) for g in goal_indices)
-        else:
-            nearest_goal_dist = 0.0
-
+        nearest_goal_dist = min(abs(pos - g) for g in goal_indices) if goal_indices else 0.0
         total_distance += float(nearest_goal_dist)
 
     return {
@@ -149,34 +127,56 @@ def get_winner_from_info(info: Dict[str, Any]) -> Any:
 
 
 def make_env() -> ChineseCheckersSelfPlayEnv:
-    """
-    Adjust parameters to match your actual environment constructor.
-    """
-    env = ChineseCheckersSelfPlayEnv(
+    return ChineseCheckersSelfPlayEnv(
         randomize_first_player=True,
         max_turns=500,
         suppress_board_prints=True,
     )
-    return env
 
 
-def build_agent_and_mapper(
-    env: ChineseCheckersSelfPlayEnv,
-    colour_to_idx: Dict[str, int],
-    device: str,
-) -> Tuple[PPOAgent, ActionMapper]:
+def get_full_board_indices(env):
+    board = env.board
+
+    if hasattr(board, "cells"):
+        cells = board.cells
+
+        if isinstance(cells, dict):
+            keys = list(cells.keys())
+            if keys and all(isinstance(x, int) for x in keys):
+                return sorted(keys)
+
+        if isinstance(cells, list):
+            if cells and all(isinstance(x, int) for x in cells):
+                return sorted(cells)
+
+    if hasattr(board, "index_of"):
+        index_of = board.index_of
+        if isinstance(index_of, dict):
+            vals = list(index_of.values())
+            if vals and all(isinstance(x, int) for x in vals):
+                return sorted(set(vals))
+
+    raise RuntimeError("Could not determine full board indices from env.board")
+
+
+def build_agent_and_mapper(env, colour_to_idx, device):
     env.reset(num_players=2, preset_colours=["red", "blue"])
 
     first_player = env.current_player
     first_obs = env.get_observation(first_player)
 
-    encoded_obs, board_indices = encode_observation(
+    encoded_obs, _ = encode_observation(
         first_obs,
         current_colour=first_player,
         colour_to_idx=colour_to_idx,
     )
 
-    mapper = ActionMapper(board_indices=board_indices, max_pin_id=10)
+    full_board_indices = get_full_board_indices(env)
+    print("FULL BOARD CELL COUNT:", len(full_board_indices))
+    print("FULL BOARD SAMPLE:", full_board_indices[:20])
+
+    mapper = ActionMapper(board_indices=full_board_indices, max_pin_id=10)
+    print("NEW ACTION SIZE:", mapper.action_size)
 
     agent = PPOAgent(
         obs_dim=len(encoded_obs),
@@ -199,6 +199,7 @@ def train(
     resume: bool = True,
     save_every: int = 50,
     snapshot_every: int = 500,
+    print_every: int = 50,
 ) -> None:
     ensure_dir(MODELS_DIR)
 
@@ -213,6 +214,10 @@ def train(
     start_episode = 0
     if resume:
         start_episode = load_checkpoint(agent, LATEST_CHECKPOINT, device=device)
+
+    reward_history: List[float] = []
+    steps_history: List[int] = []
+    draw_history: List[int] = []
 
     for episode in range(start_episode, num_episodes):
         env.reset(num_players=2, preset_colours=["red", "blue"])
@@ -236,6 +241,7 @@ def train(
             safety_steps += 1
             if safety_steps > 2000:
                 print(f"[warning] safety break in episode {episode + 1}")
+                final_info = {"winner": None, "reason": "safety_break"}
                 break
 
             player = env.current_player
@@ -251,23 +257,31 @@ def train(
             action_mask = mapper.legal_action_mask(legal_moves)
 
             if float(action_mask.sum()) <= 0.0:
-                # If the environment supports a pass / null move, keep this.
-                # Otherwise you may need a different fallback.
-                _, _, done, info = env.step(None)
-                final_info = info if isinstance(info, dict) else {}
-                continue
+                print(f"[warning] no legal actions for player {player} in episode {episode + 1}")
+                done = True
+                final_info = {
+                    "winner": None,
+                    "reason": "no_legal_actions",
+                }
+                break
 
             prev_state_info = compute_simple_state_info(obs)
 
             action_id, logprob, value = agent.act(encoded_obs, action_mask)
             action = mapper.decode_action(action_id)
 
-            # Optional sanity check:
-            # if action not in legal_moves, print for debugging
-            next_obs, env_reward, done, info = env.step(action)
+            try:
+                next_obs, env_reward, done, info = env.step(action)
+            except ValueError as e:
+                print(f"[illegal sampled action] {e}")
+                print(f"player={player}, action={action}")
+                print(f"legal sample={legal_moves[:10]}")
+                done = True
+                final_info = {"winner": None, "reason": "illegal_sampled_action"}
+                break
+
             final_info = info if isinstance(info, dict) else {}
 
-            # Try to get same player's new perspective for shaped reward
             try:
                 next_player_obs = env.get_observation(player)
             except Exception:
@@ -296,8 +310,7 @@ def train(
 
             episode_reward += reward
 
-        # Only update if we actually collected transitions
-        if len(traj["obs"]) > 0:
+        if len(traj["obs"]) >= 2:
             advantages, returns = compute_gae(
                 rewards=traj["rewards"],
                 values=traj["values"],
@@ -313,17 +326,26 @@ def train(
             }
 
             agent.update(batch)
+        else:
+            print(f"[skip update] episode {episode + 1} had only {len(traj['obs'])} transitions")
 
         winner = get_winner_from_info(final_info)
-        reason = final_info.get("reason", "unknown") if isinstance(final_info, dict) else "unknown"
 
-        print(
-            f"[episode {episode + 1}/{num_episodes}] "
-            f"reward={episode_reward:.2f} "
-            f"steps={safety_steps} "
-            f"winner={winner} "
-            f"reason={reason}"
-        )
+        reward_history.append(episode_reward)
+        steps_history.append(safety_steps)
+        draw_history.append(1 if winner is None else 0)
+
+        if (episode + 1) % print_every == 0:
+            avg_reward = sum(reward_history[-print_every:]) / len(reward_history[-print_every:])
+            avg_steps = sum(steps_history[-print_every:]) / len(steps_history[-print_every:])
+            draw_rate = sum(draw_history[-print_every:]) / len(draw_history[-print_every:])
+
+            print(
+                f"[ep {episode + 1}] "
+                f"avg_reward={avg_reward:.2f} "
+                f"avg_steps={avg_steps:.1f} "
+                f"draw_rate={draw_rate:.2f}"
+            )
 
         if (episode + 1) % save_every == 0:
             save_checkpoint(agent, episode + 1, LATEST_CHECKPOINT)
@@ -337,7 +359,6 @@ def train(
 
 
 if __name__ == "__main__":
-    # Use "cuda" if available and wanted
     device = "cuda" if torch.cuda.is_available() else "cpu"
     train(
         num_episodes=5000,
@@ -345,4 +366,5 @@ if __name__ == "__main__":
         resume=True,
         save_every=50,
         snapshot_every=500,
+        print_every=50,
     )

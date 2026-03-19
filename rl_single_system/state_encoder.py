@@ -1,46 +1,47 @@
 import numpy as np
 
-def encode_observation(obs, current_colour, colour_to_idx):
-    """
-    Convert repo observation dict into a flat float32 vector.
 
-    Expected obs keys from the wrapper:
-      - board_state
-      - own_pieces
-      - legal_moves
-      - goal_indices
-      - last_move
-      - turn_number
-      - num_players
-    """
+def _extract_occupant(cell):
+    if cell is None:
+        return None
 
-    board_state = obs["board_state"]  # usually mapping axial index -> occupant / info
+    if isinstance(cell, str):
+        return cell
+
+    if isinstance(cell, dict):
+        for key in ("occupant", "player", "colour", "color"):
+            if key in cell:
+                return cell[key]
+        return None
+
+    return None
+
+
+def encode_observation(obs, current_colour, colour_to_idx=None):
+    board_state = obs["board_state"]
     goal_indices = set(obs.get("goal_indices", []))
     num_players = obs.get("num_players", 2)
     turn_number = obs.get("turn_number", 0)
 
-    # Sort board indices so encoding is stable
-    board_indices = sorted(board_state.keys())
+    # board_state is a list indexed by actual board id
+    if isinstance(board_state, list):
+        board_indices = list(range(len(board_state)))
+        board_values = board_state
+    elif isinstance(board_state, dict):
+        board_indices = sorted(board_state.keys())
+        board_values = [board_state[i] for i in board_indices]
+    else:
+        raise TypeError(f"Unsupported board_state type: {type(board_state)}")
+
     n_cells = len(board_indices)
 
-    # Channels:
-    # 0 = my piece
-    # 1 = opponent piece
-    # 2 = empty
-    # 3 = my goal cell
     my_piece = np.zeros(n_cells, dtype=np.float32)
     opp_piece = np.zeros(n_cells, dtype=np.float32)
     empty = np.zeros(n_cells, dtype=np.float32)
     my_goal = np.zeros(n_cells, dtype=np.float32)
 
-    for i, idx in enumerate(board_indices):
-        cell = board_state[idx]
-
-        occupant = None
-        if isinstance(cell, dict):
-            occupant = cell.get("occupant")
-        else:
-            occupant = cell
+    for i, (idx, cell) in enumerate(zip(board_indices, board_values)):
+        occupant = _extract_occupant(cell)
 
         if occupant is None:
             empty[i] = 1.0
@@ -52,7 +53,6 @@ def encode_observation(obs, current_colour, colour_to_idx):
         if idx in goal_indices:
             my_goal[i] = 1.0
 
-    # small global features
     global_feats = np.array([
         float(turn_number) / 500.0,
         float(num_players) / 6.0,
