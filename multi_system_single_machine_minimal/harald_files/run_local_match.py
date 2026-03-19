@@ -3,8 +3,8 @@ from __future__ import annotations
 import argparse
 import json
 
-from environment import ChineseCheckersEnv
-from policies import RandomPolicy
+from .environment import ChineseCheckersEnv
+from .policies import RandomPolicy
 
 
 def main() -> None:

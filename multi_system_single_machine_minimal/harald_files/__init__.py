@@ -5,7 +5,7 @@ wrapper, and a socket-compatible bot client wrapper.
 """
 
 from .core import GameCore, PlayerState, make_observation
-from .env import ChineseCheckersEnv
+from .environment import ChineseCheckersEnv
 from .policies import BasePolicy, RandomPolicy
 
 __all__ = [

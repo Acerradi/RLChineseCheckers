@@ -17,17 +17,10 @@ class LiveSocketBot:
     (pin_id, to_index).
     """
 
-    def __init__(
-        self,
-        policy,
-        *,
-        name: str,
-        host: str = "127.0.0.1",
-        port: int = 50555,
-        poll_interval_sec: float = 0.2,
-        auto_start: bool = True,
-        verbose: bool = True,
-    ):
+    def __init__(self, policy, *, name: str, host: str = "127.0.0.1", port: int = 50555,
+                 poll_interval_sec: float = 0.2, auto_start: bool = True, verbose: bool = True,
+                 ):
+        
         self.policy = policy
         self.name = name
         self.client = SocketRPCClient(host=host, port=port)

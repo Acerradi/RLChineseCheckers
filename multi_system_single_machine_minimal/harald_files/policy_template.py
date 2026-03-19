@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Tuple
 
-from policies import BasePolicy
+from .policies import BasePolicy
 
 
 class MyPolicy(BasePolicy):

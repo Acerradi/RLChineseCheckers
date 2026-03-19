@@ -8,8 +8,8 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, Dict, List, Optional, Tuple
 
-from checkers_board import HexBoard
-from checkers_pins import Pin
+from ..checkers_board import HexBoard
+from ..checkers_pins import Pin
 
 
 COLOUR_ORDER = ["red", "lawn green", "yellow", "blue", "gray0", "purple"]
