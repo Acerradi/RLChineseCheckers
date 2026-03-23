@@ -78,34 +78,40 @@ def extract_piece_position(piece: Any) -> int:
     raise ValueError(f"Could not extract position from piece={piece!r}")
 
 
-def compute_simple_state_info(obs: Dict[str, Any], all_distances: Dict[int, Dict[int, int]]) -> Dict[str, float]:
+def compute_simple_state_info(obs, all_distances):
     own_pieces = obs.get("own_pieces", [])
     goal_indices = set(obs.get("goal_indices", []))
 
-    pieces_in_goal = 0
-    total_distance = 0.0
+    distances = []
 
     for piece in own_pieces:
         pos = extract_piece_position(piece)
 
-        if pos in goal_indices:
-            pieces_in_goal += 1
-
-        if goal_indices:
+        if goal_indices and pos in all_distances:
             reachable = [
                 all_distances[pos][g]
                 for g in goal_indices
-                if pos in all_distances and g in all_distances[pos]
+                if g in all_distances[pos]
             ]
-            nearest_goal_dist = min(reachable) if reachable else 999.0
+            d = min(reachable) if reachable else 999.0
         else:
-            nearest_goal_dist = 0.0
+            d = 999.0
 
-        total_distance += float(nearest_goal_dist)
+        distances.append(d)
+
+    pieces_in_goal = sum(1 for d in distances if d == 0)
+    pieces_within_1 = sum(1 for d in distances if d <= 1)
+    pieces_within_2 = sum(1 for d in distances if d <= 2)
+    pieces_within_3 = sum(1 for d in distances if d <= 3)
+    total_distance = float(sum(distances))
 
     return {
+        "distances": distances,
         "pieces_in_goal": float(pieces_in_goal),
-        "total_distance": float(total_distance),
+        "pieces_within_1": float(pieces_within_1),
+        "pieces_within_2": float(pieces_within_2),
+        "pieces_within_3": float(pieces_within_3),
+        "total_distance": total_distance,
     }
 
 def compute_gae(
@@ -307,17 +313,16 @@ def train(
 
             reason = final_info.get("reason", "unknown") if isinstance(final_info, dict) else "unknown"
 
-            if reason == "max_turns_reached":
-                episode_reward -= 100.0
-
             won = bool(done and winner == player)
             lost = bool(done and winner is not None and winner != player)
+            draw = bool(done and winner is None and reason == "max_turns_reached")
 
             reward = compute_progress_reward(
                 prev_info=prev_state_info,
                 next_info=next_state_info,
                 won=won,
                 lost=lost,
+                draw=draw,
             )
 
             traj["obs"].append(encoded_obs)
@@ -381,7 +386,7 @@ def train(
 if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
     train(
-        num_episodes=50000, #Episode number to stop at
+        num_episodes=1000000, #Episode number to stop at
         device=device,
         resume=True,
         save_every=50,
