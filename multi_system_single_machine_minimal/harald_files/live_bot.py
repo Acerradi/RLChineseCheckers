@@ -5,8 +5,8 @@ import json
 import time
 from typing import Any, Dict, Optional
 
-from policies import RandomPolicy
-from socket_adapter import SocketRPCClient
+from .policy_template import MyPolicy, load_model
+from .socket_adapter import SocketRPCClient
 
 
 class LiveSocketBot:
@@ -118,12 +118,17 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=50555)
     parser.add_argument("--quiet", action="store_true")
-    parser.add_argument("--policy", default="random", choices=["random"])
-    parser.add_argument("--seed", type=int, default=None)
+    parser.add_argument("--policy", default="gnn", choices=["gnn"])
+    parser.add_argument("--checkpoint", default=None)
+    parser.add_argument("--device", default="cpu")
     args = parser.parse_args()
 
-    if args.policy == "random":
-        policy = RandomPolicy(seed=args.seed)
+    if args.policy == "gnn":
+        if args.checkpoint:
+            model = load_model(args.checkpoint, device=args.device)
+            policy = MyPolicy(model=model, device=args.device)
+        else:
+            policy = MyPolicy(device=args.device)
     else:
         raise ValueError(f"Unknown policy {args.policy}")
 

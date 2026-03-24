@@ -36,16 +36,8 @@ class GameCore:
     model trained against this core can later be wrapped by the socket client.
     """
 
-    def __init__(
-        self,
-        *,
-        game_id: Optional[str] = None,
-        primary_colours: Optional[List[str]] = None,
-        shuffle_primary: bool = True,
-        turn_timeout_sec: Optional[float] = None,
-        game_time_limit_sec: Optional[float] = None,
-        enable_real_time_limits: bool = False,
-    ):
+    def __init__(self, *, game_id: Optional[str] = None, primary_colours: Optional[List[str]] = None, shuffle_primary: bool = True,
+                 turn_timeout_sec: Optional[float] = None, game_time_limit_sec: Optional[float] = None, enable_real_time_limits: bool = False,):
         self.game_id = game_id or str(uuid.uuid4())
         self.board = HexBoard()
         self.players: List[PlayerState] = []
@@ -199,10 +191,12 @@ class GameCore:
         return "PLAYING"
 
     def get_legal_moves_for_colour(self, colour: str) -> Dict[int, List[int]]:
+        """Return a mapping of pin ID to list of legal move indices for the given colour."""
         pins = self.pins_by_colour[colour]
         return {i: list(pin.getPossibleMoves()) for i, pin in enumerate(pins)}
 
     def apply_move(self, player_id: str, pin_id: int, to_index: int) -> Dict[str, Any]:
+        """Apply a move for a player, returning the result and updated state or error."""
         self.ensure_time_limits()
 
         if self.status != "PLAYING":
@@ -276,6 +270,7 @@ class GameCore:
         return {"ok": True, "status": "CONTINUE", "state": self.to_public_state()}
 
     def compute_scores(self) -> None:
+        """Compute scores for all players based on their current state."""
         def axial_dist(a, b):
             dq = abs(a.q - b.q)
             dr = abs(a.r - b.r)
@@ -304,19 +299,18 @@ class GameCore:
             distance_score = max(0.0, 200.0 - total_dist) if pl.move_count > 0 else 0.0
 
             final_score = time_score + move_score + pin_goal_score + distance_score
-            self.scores[pl.player_id] = {
-                "final_score": final_score,
-                "time_score": time_score,
-                "move_score": move_score,
-                "pin_goal_score": pin_goal_score,
-                "distance_score": distance_score,
-                "moves": pl.move_count,
-                "pins_in_goal": pins_in_goal,
-                "total_distance": total_dist,
-                "time_taken_sec": pl.time_taken_sec,
-            }
+            self.scores[pl.player_id] = {"final_score": final_score,
+                                         "time_score": time_score,
+                                         "move_score": move_score,
+                                         "pin_goal_score": pin_goal_score,
+                                         "distance_score": distance_score,
+                                         "moves": pl.move_count,
+                                         "pins_in_goal": pins_in_goal,
+                                         "total_distance": total_dist,
+                                         "time_taken_sec": pl.time_taken_sec}
 
     def to_public_state(self) -> Dict[str, Any]:
+        """Return a representation of the game state that can be safely shared with clients."""
         return {
             "game_id": self.game_id,
             "status": self.status,
