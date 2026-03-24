@@ -9,8 +9,20 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+import os
+import sys
+
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PARENT_DIR = os.path.dirname(CURRENT_DIR)
+
+if CURRENT_DIR not in sys.path:
+    sys.path.insert(0, CURRENT_DIR)
+
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
+
 from checkers_board import HexBoard
-from .policies import BasePolicy
+from policies import BasePolicy
 
 
 COLOURS = ["red", "lawn green", "yellow", "blue", "gray0", "purple"]
@@ -47,30 +59,31 @@ class BoardGraphBuilder:
     def _build_edge_index(self) -> torch.Tensor:
         edges = []
 
-        for i, cell in enumerate(self.board.cells):
-            # You may need to adapt this to your actual board implementation.
-            # Common possibilities:
-            # - cell.neighbors
-            # - self.board.neighbors(i)
-            # - cell.adjacent
-            if hasattr(cell, "neighbors"):
-                for j in cell.neighbors:
+        # Your board stores cells as BoardPosition objects with axial coords q, r.
+        coords = [(cell.q, cell.r) for cell in self.board.cells]
+        coord_to_idx = self.board.index_of
+
+        # Axial hex neighbor directions
+        hex_dirs = [
+            (1, 0),
+            (-1, 0),
+            (0, 1),
+            (0, -1),
+            (1, -1),
+            (-1, 1),
+        ]
+
+        for i, (q, r) in enumerate(coords):
+            for dq, dr in hex_dirs:
+                nbr = (q + dq, r + dr)
+                if nbr in coord_to_idx:
+                    j = coord_to_idx[nbr]
                     edges.append((i, j))
-            elif hasattr(self.board, "neighbors"):
-                for j in self.board.neighbors(i):
-                    edges.append((i, j))
-            else:
-                raise ValueError(
-                    "Could not infer board adjacency. "
-                    "Please wire BoardGraphBuilder._build_edge_index() "
-                    "to your HexBoard neighbor API."
-                )
 
         if not edges:
-            raise ValueError("No graph edges found")
+            raise ValueError("No graph edges found after coordinate-based construction")
 
-        edge_index = torch.tensor(edges, dtype=torch.long).t().contiguous()
-        return edge_index
+        return torch.tensor(edges, dtype=torch.long).t().contiguous()
 
     def _occupancy_map(self, state: Dict[str, Any]) -> Dict[int, str]:
         occ = {}

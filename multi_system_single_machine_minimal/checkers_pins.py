@@ -1,4 +1,4 @@
-from multi_system_single_machine_minimal.checkers_board import BoardPosition,HexBoard
+from checkers_board import BoardPosition,HexBoard
 
 class Pin:
     """Represents a pin placed on the board by index."""
@@ -101,6 +101,6 @@ class Pin:
         self.board.cells[self.axialindex].occupied = False
         self.axialindex = int(new_axialindex)
         self.board.cells[int(new_axialindex)].occupied = True
-        print('Pin placed successfully.')
+        # print('Pin placed successfully.')
         return True
 

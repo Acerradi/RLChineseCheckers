@@ -18,11 +18,23 @@ class ReplayBuffer:
 
 
 import os
+import sys
+import time
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
 
-from .policy_template import build_model, save_model, load_model, GraphState, MyPolicy, HeuristicPolicy
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PARENT_DIR = os.path.dirname(CURRENT_DIR)
+
+if CURRENT_DIR not in sys.path:
+    sys.path.insert(0, CURRENT_DIR)
+
+if PARENT_DIR not in sys.path:
+    sys.path.insert(0, PARENT_DIR)
+
+
+from policy_template import build_model, save_model, load_model, GraphState, MyPolicy, HeuristicPolicy
 
 
 class TrainableAgent:
@@ -56,7 +68,7 @@ class TrainableAgent:
         pin_id, _, to_idx = graph_state.legal_actions[action_idx]
         return (pin_id, to_idx), action_idx, graph_state
 
-    def train_policy_value_batch(self, batch):
+    def train_policy_value_batch(self, batch, learning_weight: float = 0.5):
         if not batch:
             return 0.0
 
@@ -80,7 +92,7 @@ class TrainableAgent:
             policy_loss = F.cross_entropy(logits.unsqueeze(0), target_action_idx)
             value_loss = F.mse_loss(pred_value, target_value)
 
-            loss = policy_loss + value_loss
+            loss = policy_loss + value_loss * learning_weight
 
             self.optimizer.zero_grad()
             loss.backward()
@@ -95,7 +107,7 @@ class TrainableAgent:
 
 
 from collections import defaultdict
-from .environment import ChineseCheckersEnv
+from environment import ChineseCheckersEnv
 
 def terminal_value_from_status(final_state, colour: str) -> float:
     """Determine the target value for a player based on the final game state and their colour."""
@@ -107,12 +119,19 @@ def terminal_value_from_status(final_state, colour: str) -> float:
     return -1.0
 
 
-def bootstrap_imitation(num_games: int = 500, batch_size: int = 64, checkpoint_every: int = 50, checkpoint_dir: str = "checkpoints/bootstrap", device: str = "cpu", start_checkpoint: str | None = None):
-    """Train a policy to imitate the heuristic by generating games where the heuristic plays all sides and learning from that."""
+def bootstrap_imitation(num_games: int = 500,
+                        batch_size: int = 64,
+                        checkpoint_every: int = 50,
+                        checkpoint_dir: str = "checkpoints/bootstrap",
+                        device: str = "cpu",
+                        start_checkpoint: str | None = None,
+                        max_moves_per_game: int = 500
+                        ):
+    """Run a single round of bootstrap imitation learning using the heuristic policy to generate training data."""
     os.makedirs(checkpoint_dir, exist_ok=True)
 
     env = ChineseCheckersEnv(num_players=6)
-    heuristic = HeuristicPolicy()
+    heuristic = HeuristicPolicy(epsilon=0.0)
     learner = TrainableAgent(name="shared_model", device=device)
     buffer = ReplayBuffer(capacity=50000)
 
@@ -125,7 +144,8 @@ def bootstrap_imitation(num_games: int = 500, batch_size: int = 64, checkpoint_e
         per_colour_examples = defaultdict(list)
 
         done = False
-        while not done:
+        game_start = time.time()
+        while not done and env.game.move_count < max_moves_per_game:
             colour = env.current_turn_colour
             obs = env.observe(colour)
 
@@ -152,6 +172,9 @@ def bootstrap_imitation(num_games: int = 500, batch_size: int = 64, checkpoint_e
             step_result = env.step(colour, heuristic_action)
             done = step_result.done
 
+        if env.game.move_count >= max_moves_per_game:
+            print(f"[bootstrap] game={game_idx} hit move cap ({max_moves_per_game})")
+
         final_state = env.game.to_public_state()
 
         for colour, examples in per_colour_examples.items():
@@ -164,30 +187,46 @@ def bootstrap_imitation(num_games: int = 500, batch_size: int = 64, checkpoint_e
                 ex["target_value"] = target_value
                 buffer.add(ex)
 
-        batch = buffer.sample(batch_size)
-        loss = learner.train_policy_value_batch(batch)
+        updates_per_game = 10
+        losses = []
 
-        if game_idx % 10 == 0:
-            print(f"[bootstrap] game={game_idx} buffer={len(buffer)} loss={loss:.4f}")
+        for _ in range(updates_per_game):
+            batch = buffer.sample(batch_size)
+            loss = learner.train_policy_value_batch(batch)
+            losses.append(loss)
 
+        avg_loss = sum(losses) / len(losses) if losses else 0.0
+        elapsed = time.time() - game_start
+        if game_idx % 1 == 0:
+            print(f"[bootstrap] game={game_idx} moves={env.game.move_count} "
+                  f"buffer={len(buffer)} avg_loss={avg_loss:.4f} "
+                  f"updates={updates_per_game} time={elapsed:.2f}s"
+                  )
+        
         if game_idx % checkpoint_every == 0:
-            learner.save(os.path.join(checkpoint_dir, f"shared_model_{game_idx}.pt"))
+            ckpt_path = os.path.join(checkpoint_dir, f"shared_model_{game_idx}.pt")
+            print(f"[bootstrap] saving checkpoint: {ckpt_path}")
+            learner.save(ckpt_path)
 
     learner.save(os.path.join(checkpoint_dir, "shared_model_final.pt"))
 
 
-def evaluate_warmstart_action_match(checkpoint_path: str, eval_games: int = 20, max_positions: int = 1000, device: str = "cpu") -> dict:
+def evaluate_warmstart_topk_match(checkpoint_path: str,
+                                  eval_games: int = 20,
+                                  max_positions: int = 1000,
+                                  device: str = "cpu",
+                                  k: int = 3) -> dict:
     """
-    Measures how often the model chooses the same action as the heuristic
+    Measures how often the model's chosen action is among the heuristic's top-k legal moves
     on states generated by heuristic play.
 
-    Returns: {"match_rate": float, "matches": int, "total": int}
+    Returns:{"topk_match_rate": float,"matches": int,"total": int,"k": int,}
     """
-    def actions_equal(a, b) -> bool:
-        return tuple(a) == tuple(b)
-    
     env = ChineseCheckersEnv(num_players=6)
-    heuristic = HeuristicPolicy()
+
+    # Make heuristic deterministic for evaluation
+    heuristic = HeuristicPolicy(epsilon=0.0)
+
     model = load_model(checkpoint_path, device=device)
     learner = MyPolicy(model=model, device=device)
 
@@ -202,21 +241,44 @@ def evaluate_warmstart_action_match(checkpoint_path: str, eval_games: int = 20, 
             colour = env.current_turn_colour
             obs = env.observe(colour)
 
-            heuristic_action = heuristic.select_action(obs)
+            state = obs["state"]
+            legal_moves = obs["legal_moves"]
+            my_positions = state["pins"][colour]
+
+            # Score every legal move with the heuristic
+            scored_actions = []
+            for pin_id, to_list in legal_moves.items():
+                pid = int(pin_id)
+                from_idx = my_positions[pid]
+                for to_idx in to_list:
+                    s = heuristic._score_action(colour, from_idx, int(to_idx), state)
+                    scored_actions.append(((pid, int(to_idx)), s))
+
+            if not scored_actions:
+                step_result = env.step(colour, heuristic.select_action(obs))
+                done = step_result.done
+                continue
+
+            # Sort descending by heuristic score
+            scored_actions.sort(key=lambda x: x[1], reverse=True)
+
+            topk_actions = {action for action, _ in scored_actions[:k]}
             model_action = learner.select_action(obs)
 
-            if actions_equal(heuristic_action, model_action):
+            if tuple(model_action) in topk_actions:
                 matches += 1
+
             total += 1
 
-            step_result = env.step(colour, heuristic_action)
+            # Keep state generation heuristic-driven
+            step_result = env.step(colour, heuristic.select_action(obs))
             done = step_result.done
 
         if total >= max_positions:
             break
 
     match_rate = matches / total if total > 0 else 0.0
-    return {"match_rate": match_rate, "matches": matches, "total": total}
+    return {"topk_match_rate": match_rate,"matches": matches,"total": total,"k": k}
 
 
 def warmstart_until_good_enough(target_action_match: float = 0.85,
@@ -225,7 +287,9 @@ def warmstart_until_good_enough(target_action_match: float = 0.85,
                                 batch_size: int = 64,
                                 checkpoint_every: int = 50,
                                 checkpoint_dir: str = "checkpoints/bootstrap",
-                                device: str = "cpu") -> tuple[str, dict]:
+                                device: str = "cpu",
+                                max_moves_per_game: int = 500,
+                                ) -> tuple[str, dict]:
     """
     Repeatedly runs bootstrap imitation in chunks, evaluating after each chunk,
     until the model matches the heuristic often enough.
@@ -234,35 +298,38 @@ def warmstart_until_good_enough(target_action_match: float = 0.85,
 
     total_games = 0
     final_ckpt = os.path.join(checkpoint_dir, "shared_model_final.pt")
+    max_moves_per_game=max_moves_per_game
 
     while total_games < max_bootstrap_games:
         print(f"\nRunning bootstrap chunk: {bootstrap_chunk_games} games")
-        bootstrap_imitation(
-            num_games=bootstrap_chunk_games,
-            batch_size=batch_size,
-            checkpoint_every=checkpoint_every,
-            checkpoint_dir=checkpoint_dir,
-            device=device,
-        )
+        current_checkpoint = final_ckpt if os.path.exists(final_ckpt) else None
+
+        bootstrap_imitation(num_games=bootstrap_chunk_games,
+                            batch_size=batch_size,
+                            checkpoint_every=checkpoint_every,
+                            checkpoint_dir=checkpoint_dir,
+                            device=device,
+                            max_moves_per_game=max_moves_per_game,
+                            start_checkpoint=current_checkpoint
+                            )
         total_games += bootstrap_chunk_games
 
         if not os.path.exists(final_ckpt):
             raise FileNotFoundError(f"Bootstrap checkpoint missing: {final_ckpt}")
 
-        action_eval = evaluate_warmstart_action_match(
+        action_eval = evaluate_warmstart_topk_match(
             checkpoint_path=final_ckpt,
             eval_games=20,
             max_positions=1000,
             device=device,
+            k=3,
         )
 
-        print(
-            f"[warmstart eval] games={total_games} "
-            f"match_rate={action_eval['match_rate']:.3f} "
-            f"({action_eval['matches']}/{action_eval['total']})"
-        )
+        print(f"[warmstart eval] games={total_games} "
+              f"top{action_eval['k']}_match_rate={action_eval['topk_match_rate']:.3f} "
+              f"({action_eval['matches']}/{action_eval['total']})")
 
-        if action_eval["match_rate"] >= target_action_match:
+        if action_eval["topk_match_rate"] >= target_action_match:
             print("Warm-start threshold reached.")
             return final_ckpt, action_eval
 
@@ -277,7 +344,8 @@ def self_play_refinement(start_checkpoint: str,
                          checkpoint_dir: str = "checkpoints/self_play",
                          device: str = "cpu",
                          heuristic_mix: float = 0.15,
-):
+                         max_moves_per_game: int = 500
+                         ):
     """Continue training a policy by having it play against itself, with some heuristic action noise for diversity."""
     os.makedirs(checkpoint_dir, exist_ok=True)
 
@@ -294,7 +362,8 @@ def self_play_refinement(start_checkpoint: str,
         per_colour_examples = defaultdict(list)
 
         done = False
-        while not done:
+        game_start = time.time()
+        while not done and env.game.move_count < max_moves_per_game:
             colour = env.current_turn_colour
             obs = env.observe(colour)
 
@@ -320,6 +389,9 @@ def self_play_refinement(start_checkpoint: str,
             step_result = env.step(colour, action)
             done = step_result.done
 
+        if env.game.move_count >= max_moves_per_game:
+            print(f"[self-play] game={game_idx} hit move cap ({max_moves_per_game})")
+
         final_state = env.game.to_public_state()
 
         for colour, examples in per_colour_examples.items():
@@ -332,14 +404,22 @@ def self_play_refinement(start_checkpoint: str,
                 ex["target_value"] = target_value
                 buffer.add(ex)
 
-        batch = buffer.sample(batch_size)
-        loss = learner.train_policy_value_batch(batch)
+        updates_per_game = 10
+        losses = []
 
-        if game_idx % 10 == 0:
-            print(f"[self-play] game={game_idx} buffer={len(buffer)} loss={loss:.4f}")
+        for _ in range(updates_per_game):
+            batch = buffer.sample(batch_size)
+            loss = learner.train_policy_value_batch(batch)
+            losses.append(loss)
+
+        avg_loss = sum(losses) / len(losses) if losses else 0.0
+        elapsed = time.time() - game_start
+        print(f"[self-play] game={game_idx} moves={env.game.move_count} "
+              f"buffer={len(buffer)} loss={avg_loss:.4f} time={elapsed:.2f}s")
 
         if game_idx % checkpoint_every == 0:
             ckpt_path = os.path.join(checkpoint_dir, f"shared_model_{game_idx}.pt")
+            print(f"[self-play] saving checkpoint: {ckpt_path}")
             learner.save(ckpt_path)
 
     learner.save(os.path.join(checkpoint_dir, "shared_model_final.pt"))
@@ -361,7 +441,7 @@ def main():
 
     device = "cpu"
 
-    root_ckpt_dir = "checkpoints"
+    root_ckpt_dir = "multi_system_single_machine_minimal/harald_files/checkpoints"
     bootstrap_dir = os.path.join(root_ckpt_dir, "bootstrap")
     selfplay_dir = os.path.join(root_ckpt_dir, "self_play")
 
@@ -373,14 +453,14 @@ def main():
     print("=" * 80)
 
     warmstart_checkpoint, warmstart_eval = warmstart_until_good_enough(
-        target_action_match=0.85,
+        target_action_match=0.75,
         bootstrap_chunk_games=100,
         max_bootstrap_games=2000,
         batch_size=64,
         checkpoint_every=50,
         checkpoint_dir=bootstrap_dir,
-        device=device,
-    )
+        max_moves_per_game=500,
+        device=device)
 
     print("\nWarm-start evaluation summary:")
     print(warmstart_eval)
@@ -389,15 +469,14 @@ def main():
     print("STAGE 2: SELF-PLAY REFINEMENT")
     print("=" * 80)
 
-    self_play_refinement(
-        start_checkpoint=warmstart_checkpoint,
-        num_games=2000,
-        batch_size=64,
-        checkpoint_every=100,
-        checkpoint_dir=selfplay_dir,
-        device=device,
-        heuristic_mix=0.15,
-    )
+    self_play_refinement(start_checkpoint=warmstart_checkpoint,
+                         num_games=2000,
+                         batch_size=64,
+                         checkpoint_every=100,
+                         checkpoint_dir=selfplay_dir,
+                         device=device,
+                         heuristic_mix=0.15,
+                         max_moves_per_game=500)
 
     print("\nTraining complete.")
     print(f"Warm-start checkpoint used: {warmstart_checkpoint}")
