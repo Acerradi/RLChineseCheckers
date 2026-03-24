@@ -68,12 +68,14 @@ class TrainableAgent:
         pin_id, _, to_idx = graph_state.legal_actions[action_idx]
         return (pin_id, to_idx), action_idx, graph_state
 
-    def train_policy_value_batch(self, batch, learning_weight: float = 0.5):
+    def train_policy_value_batch(self, batch):
         if not batch:
             return 0.0
 
         self.model.train()
-        total_loss = 0.0
+        self.optimizer.zero_grad()
+
+        losses = []
 
         for item in batch:
             gs = GraphState(
@@ -92,15 +94,14 @@ class TrainableAgent:
             policy_loss = F.cross_entropy(logits.unsqueeze(0), target_action_idx)
             value_loss = F.mse_loss(pred_value, target_value)
 
-            loss = policy_loss + value_loss * learning_weight
+            loss = policy_loss + 0.1 * value_loss
+            losses.append(loss)
 
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
+        batch_loss = torch.stack(losses).mean()
+        batch_loss.backward()
+        self.optimizer.step()
 
-            total_loss += float(loss.item())
-
-        return total_loss / len(batch)
+        return float(batch_loss.item())
 
     def save(self, path: str):
         save_model(self.model, path)
@@ -187,7 +188,7 @@ def bootstrap_imitation(num_games: int = 500,
                 ex["target_value"] = target_value
                 buffer.add(ex)
 
-        updates_per_game = 10
+        updates_per_game = 4
         losses = []
 
         for _ in range(updates_per_game):
@@ -281,11 +282,11 @@ def evaluate_warmstart_topk_match(checkpoint_path: str,
     return {"topk_match_rate": match_rate,"matches": matches,"total": total,"k": k}
 
 
-def warmstart_until_good_enough(target_action_match: float = 0.85,
-                                bootstrap_chunk_games: int = 100,
+def warmstart_until_good_enough(target_action_match: float = 0.75,
+                                bootstrap_chunk_games: int = 50,
                                 max_bootstrap_games: int = 2000,
                                 batch_size: int = 64,
-                                checkpoint_every: int = 50,
+                                checkpoint_every: int = 25,
                                 checkpoint_dir: str = "checkpoints/bootstrap",
                                 device: str = "cpu",
                                 max_moves_per_game: int = 500,
@@ -404,7 +405,7 @@ def self_play_refinement(start_checkpoint: str,
                 ex["target_value"] = target_value
                 buffer.add(ex)
 
-        updates_per_game = 10
+        updates_per_game = 4
         losses = []
 
         for _ in range(updates_per_game):
@@ -454,10 +455,10 @@ def main():
 
     warmstart_checkpoint, warmstart_eval = warmstart_until_good_enough(
         target_action_match=0.75,
-        bootstrap_chunk_games=100,
+        bootstrap_chunk_games=50,
         max_bootstrap_games=2000,
-        batch_size=64,
-        checkpoint_every=50,
+        batch_size=128,
+        checkpoint_every=25,
         checkpoint_dir=bootstrap_dir,
         max_moves_per_game=500,
         device=device)
@@ -471,7 +472,7 @@ def main():
 
     self_play_refinement(start_checkpoint=warmstart_checkpoint,
                          num_games=2000,
-                         batch_size=64,
+                         batch_size=128,
                          checkpoint_every=100,
                          checkpoint_dir=selfplay_dir,
                          device=device,
