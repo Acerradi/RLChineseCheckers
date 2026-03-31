@@ -248,7 +248,7 @@ class HeuristicPolicy(BasePolicy):
 
 
 class GraphEncoder(nn.Module):
-    def __init__(self, in_dim: int, hidden_dim: int = 128, num_layers: int = 4):
+    def __init__(self, in_dim: int, hidden_dim: int = 64, num_layers: int = 3):
         super().__init__()
         self.layers = nn.ModuleList()
         d = in_dim
@@ -263,13 +263,9 @@ class GraphEncoder(nn.Module):
 
 
 class MovePolicyValueNet(nn.Module):
-    """
-    GNN encoder + legal-move policy head + scalar value head.
-    """
-
-    def __init__(self, node_feat_dim: int, hidden_dim: int = 128):
+    def __init__(self, node_feat_dim: int, hidden_dim: int = 64, num_layers: int = 3):
         super().__init__()
-        self.encoder = GraphEncoder(node_feat_dim, hidden_dim=hidden_dim, num_layers=4)
+        self.encoder = GraphEncoder(in_dim=node_feat_dim, hidden_dim=hidden_dim, num_layers=num_layers)
 
         self.global_proj = nn.Sequential(
             nn.Linear(hidden_dim, hidden_dim),
@@ -334,7 +330,9 @@ class MyPolicy(BasePolicy):
                  board: Optional[HexBoard] = None,
                  device: str = "cpu",
                  use_mcts: bool = False,
-                 mcts_simulations: int = 64):
+                 mcts_simulations: int = 64,
+                 hidden_dim: int = 64,
+                 num_layers: int = 3,):
         
         self.device = torch.device(device)
         self.board = board or HexBoard()
@@ -342,7 +340,9 @@ class MyPolicy(BasePolicy):
 
         if model is None:
             node_feat_dim = len(OCCUPANT_TYPES) + len(ZONE_TYPES) + 4
-            model = MovePolicyValueNet(node_feat_dim=node_feat_dim, hidden_dim=128)
+            model = MovePolicyValueNet(node_feat_dim=node_feat_dim,
+                                       hidden_dim=hidden_dim,
+                                       num_layers=num_layers)
 
         self.model = model.to(self.device)
         self.model.eval()
@@ -390,21 +390,47 @@ class MyPolicy(BasePolicy):
         return best_action
 
 
-def build_model(device: str = "cpu", hidden_dim: int = 128) -> MovePolicyValueNet:
+def build_model(device: str = "cpu", hidden_dim: int = 64, num_layers: int = 3) -> MovePolicyValueNet:
     node_feat_dim = len(OCCUPANT_TYPES) + len(ZONE_TYPES) + 4
-    model = MovePolicyValueNet(node_feat_dim=node_feat_dim, hidden_dim=hidden_dim)
+    model = MovePolicyValueNet(
+        node_feat_dim=node_feat_dim,
+        hidden_dim=hidden_dim,
+        num_layers=num_layers,
+    )
     return model.to(device)
 
-def save_model(model: MovePolicyValueNet, path: str) -> None:
-    torch.save(model.state_dict(), path)
+def save_model(model: MovePolicyValueNet, path: str, hidden_dim: int = 64, num_layers: int = 3) -> None:
+    payload = {
+        "model_state_dict": model.state_dict(),
+        "hidden_dim": hidden_dim,
+        "num_layers": num_layers,
+    }
+    torch.save(payload, path)
 
-def load_model(path: str, device: str = "cpu", hidden_dim: int = 128) -> MovePolicyValueNet:
-    model = build_model(device=device, hidden_dim=hidden_dim)
-    state = torch.load(path, map_location=device)
-    model.load_state_dict(state)
+def load_model(path: str, device: str = "cpu", hidden_dim: int = 64, num_layers: int = 3) -> MovePolicyValueNet:
+    payload = torch.load(path, map_location=device)
+
+    # backward compatibility: old checkpoints may just be raw state_dicts
+    if isinstance(payload, dict) and "model_state_dict" in payload:
+        ckpt_hidden = payload.get("hidden_dim", hidden_dim)
+        ckpt_layers = payload.get("num_layers", num_layers)
+
+        if ckpt_hidden != hidden_dim or ckpt_layers != num_layers:
+            raise ValueError(
+                f"Checkpoint architecture mismatch: "
+                f"checkpoint has hidden_dim={ckpt_hidden}, num_layers={ckpt_layers}, "
+                f"but requested hidden_dim={hidden_dim}, num_layers={num_layers}"
+            )
+
+        state_dict = payload["model_state_dict"]
+    else:
+        # old raw state_dict checkpoint
+        state_dict = payload
+
+    model = build_model(device=device, hidden_dim=hidden_dim, num_layers=num_layers)
+    model.load_state_dict(state_dict)
     model.eval()
     return model
-
 
 class SearchEnvironment:
     """

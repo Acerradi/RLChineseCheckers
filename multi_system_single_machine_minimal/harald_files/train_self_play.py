@@ -27,33 +27,42 @@ import torch.optim as optim
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.dirname(CURRENT_DIR)
 
+
 if CURRENT_DIR not in sys.path:
     sys.path.insert(0, CURRENT_DIR)
 
 if PARENT_DIR not in sys.path:
     sys.path.insert(0, PARENT_DIR)
 
+MODEL_HIDDEN_DIM = 64
+MODEL_NUM_LAYERS = 3
 
 from policy_template import build_model, save_model, load_model, GraphState, MyPolicy, HeuristicPolicy
 
 
 class TrainableAgent:
-    def __init__(self, name: str, device: str = "cpu", lr: float = 1e-3):
+    def __init__(self, name: str, device: str = "cpu", lr: float = 1e-3, hidden_dim: int = 64, num_layers: int = 3):
         self.name = name
         self.device = device
-        self.model = build_model(device=device)
+        self.hidden_dim = hidden_dim
+        self.num_layers = num_layers
+
+        self.model = build_model(device=device,
+                                 hidden_dim=hidden_dim,
+                                 num_layers=num_layers)
         self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
-        self.policy = MyPolicy(model=self.model, device=device)
+        self.policy = MyPolicy(model=self.model,
+                               device=device,
+                               hidden_dim=hidden_dim,
+                               num_layers=num_layers)
 
     def graph_from_observation(self, observation):
         gs = self.policy.graph_builder.build(observation)
-        return GraphState(
-            x=gs.x.to(self.device),
-            edge_index=gs.edge_index.to(self.device),
-            legal_actions=gs.legal_actions,
-            controlled_colour=gs.controlled_colour,
-            meta=gs.meta,
-        )
+        return GraphState(x=gs.x.to(self.device),
+                          edge_index=gs.edge_index.to(self.device),
+                          legal_actions=gs.legal_actions,
+                          controlled_colour=gs.controlled_colour,
+                          meta=gs.meta)
 
     def select_action_with_index(self, observation):
         graph_state = self.graph_from_observation(observation)
@@ -68,7 +77,7 @@ class TrainableAgent:
         pin_id, _, to_idx = graph_state.legal_actions[action_idx]
         return (pin_id, to_idx), action_idx, graph_state
 
-    def train_policy_value_batch(self, batch):
+    def train_policy_value_batch(self, batch, value_weight: float = 0.1):
         if not batch:
             return 0.0
 
@@ -94,7 +103,7 @@ class TrainableAgent:
             policy_loss = F.cross_entropy(logits.unsqueeze(0), target_action_idx)
             value_loss = F.mse_loss(pred_value, target_value)
 
-            loss = policy_loss + 0.1 * value_loss
+            loss = policy_loss + value_weight * value_loss
             losses.append(loss)
 
         batch_loss = torch.stack(losses).mean()
@@ -103,8 +112,22 @@ class TrainableAgent:
 
         return float(batch_loss.item())
 
+    def load(self, path: str):
+        self.model = load_model(path,
+                                device=self.device,
+                                hidden_dim=self.hidden_dim,
+                                num_layers=self.num_layers)
+        self.policy = MyPolicy(model=self.model,
+                               device=self.device,
+                               hidden_dim=self.hidden_dim,
+                               num_layers=self.num_layers)
+
+
     def save(self, path: str):
-        save_model(self.model, path)
+        save_model(self.model,
+                   path,
+                   hidden_dim=self.hidden_dim,
+                   num_layers=self.num_layers)
 
 
 from collections import defaultdict
@@ -126,21 +149,34 @@ def bootstrap_imitation(num_games: int = 500,
                         checkpoint_dir: str = "checkpoints/bootstrap",
                         device: str = "cpu",
                         start_checkpoint: str | None = None,
-                        max_moves_per_game: int = 500
-                        ):
-    """Run a single round of bootstrap imitation learning using the heuristic policy to generate training data."""
+                        max_moves_per_game: int = 500,
+                        start_game_index: int = 0):
+    """
+    Run a single round of bootstrap imitation learning using the heuristic policy to generate training data.
+    """
     os.makedirs(checkpoint_dir, exist_ok=True)
 
     env = ChineseCheckersEnv(num_players=6)
     heuristic = HeuristicPolicy(epsilon=0.0)
-    learner = TrainableAgent(name="shared_model", device=device)
+    learner = TrainableAgent(name="shared_model",
+                             device=device,
+                             hidden_dim=MODEL_HIDDEN_DIM,
+                             num_layers=MODEL_NUM_LAYERS)
     buffer = ReplayBuffer(capacity=50000)
 
     if start_checkpoint is not None and os.path.exists(start_checkpoint):
-        learner.model.load_state_dict(torch.load(start_checkpoint, map_location=device))
+        learner.model = load_model(start_checkpoint,
+                                   device=device,
+                                   hidden_dim=MODEL_HIDDEN_DIM,
+                                   num_layers=MODEL_NUM_LAYERS)
+        learner.policy = MyPolicy(model=learner.model, device=device)
         learner.model.eval()
 
-    for game_idx in range(1, num_games + 1):
+    maybe_load_into_learner(learner, start_checkpoint)
+
+    for local_game_idx in range(1, num_games + 1):
+        game_idx = start_game_index + local_game_idx
+
         env.reset()
         per_colour_examples = defaultdict(list)
 
@@ -188,21 +224,21 @@ def bootstrap_imitation(num_games: int = 500,
                 ex["target_value"] = target_value
                 buffer.add(ex)
 
-        updates_per_game = 4
-        losses = []
-
-        for _ in range(updates_per_game):
-            batch = buffer.sample(batch_size)
-            loss = learner.train_policy_value_batch(batch)
-            losses.append(loss)
-
-        avg_loss = sum(losses) / len(losses) if losses else 0.0
+        if game_idx % 5 == 0:
+            losses = []
+            for _ in range(8):
+                batch = buffer.sample(batch_size)
+                loss = learner.train_policy_value_batch(batch)
+                losses.append(loss)
+            avg_loss = sum(losses) / len(losses)
+        else:
+            avg_loss = None
+        
         elapsed = time.time() - game_start
         if game_idx % 1 == 0:
+            loss_str = f"{avg_loss:.4f}" if avg_loss is not None else "NA"
             print(f"[bootstrap] game={game_idx} moves={env.game.move_count} "
-                  f"buffer={len(buffer)} avg_loss={avg_loss:.4f} "
-                  f"updates={updates_per_game} time={elapsed:.2f}s"
-                  )
+                  f"buffer={len(buffer)} avg_loss={loss_str} time={elapsed:.2f}s")
         
         if game_idx % checkpoint_every == 0:
             ckpt_path = os.path.join(checkpoint_dir, f"shared_model_{game_idx}.pt")
@@ -311,8 +347,9 @@ def warmstart_until_good_enough(target_action_match: float = 0.75,
                             checkpoint_dir=checkpoint_dir,
                             device=device,
                             max_moves_per_game=max_moves_per_game,
-                            start_checkpoint=current_checkpoint
-                            )
+                            start_checkpoint=current_checkpoint,
+                            start_game_index=total_games)
+        
         total_games += bootstrap_chunk_games
 
         if not os.path.exists(final_ckpt):
@@ -345,20 +382,24 @@ def self_play_refinement(start_checkpoint: str,
                          checkpoint_dir: str = "checkpoints/self_play",
                          device: str = "cpu",
                          heuristic_mix: float = 0.15,
-                         max_moves_per_game: int = 500
-                         ):
+                         max_moves_per_game: int = 500,
+                         start_game_index: int = 0):
     """Continue training a policy by having it play against itself, with some heuristic action noise for diversity."""
     os.makedirs(checkpoint_dir, exist_ok=True)
 
     env = ChineseCheckersEnv(num_players=6)
-    heuristic = HeuristicPolicy()
-    learner = TrainableAgent(name="shared_model", device=device)
-    learner.model.load_state_dict(torch.load(start_checkpoint, map_location=device))
-    learner.model.eval()
+    heuristic = HeuristicPolicy(epsilon=0.0)
+    learner = TrainableAgent(name="shared_model",
+                             device=device,
+                             hidden_dim=MODEL_HIDDEN_DIM,
+                             num_layers=MODEL_NUM_LAYERS)
+    learner.load(start_checkpoint)
 
     buffer = ReplayBuffer(capacity=100000)
 
-    for game_idx in range(1, num_games + 1):
+    for local_game_idx in range(1, num_games + 1):
+        game_idx = start_game_index + local_game_idx
+
         env.reset()
         per_colour_examples = defaultdict(list)
 
@@ -405,18 +446,20 @@ def self_play_refinement(start_checkpoint: str,
                 ex["target_value"] = target_value
                 buffer.add(ex)
 
-        updates_per_game = 4
-        losses = []
-
-        for _ in range(updates_per_game):
-            batch = buffer.sample(batch_size)
-            loss = learner.train_policy_value_batch(batch)
-            losses.append(loss)
-
-        avg_loss = sum(losses) / len(losses) if losses else 0.0
+        if game_idx % 5 == 0:
+            losses = []
+            for _ in range(8):
+                batch = buffer.sample(batch_size)
+                loss = learner.train_policy_value_batch(batch)
+                losses.append(loss)
+            avg_loss = sum(losses) / len(losses)
+        else:
+            avg_loss = None
+        
         elapsed = time.time() - game_start
+        loss_str = f"{avg_loss:.4f}" if avg_loss is not None else "NA"
         print(f"[self-play] game={game_idx} moves={env.game.move_count} "
-              f"buffer={len(buffer)} loss={avg_loss:.4f} time={elapsed:.2f}s")
+              f"buffer={len(buffer)} loss={loss_str} time={elapsed:.2f}s")
 
         if game_idx % checkpoint_every == 0:
             ckpt_path = os.path.join(checkpoint_dir, f"shared_model_{game_idx}.pt")
@@ -436,51 +479,134 @@ def normalized_final_score(game, colour: str) -> float:
     return max(-1.0, min(1.0, raw / 1200.0))
 
 
+def checkpoint_game_index(path: str) -> int:
+    name = os.path.basename(path)
+    if name.startswith("shared_model_") and name.endswith(".pt"):
+        stem = name[len("shared_model_"):-3]
+        if stem.isdigit():
+            return int(stem)
+    return 0
+
+
+def maybe_load_into_learner(learner: TrainableAgent, checkpoint_path: str | None):
+    if checkpoint_path is not None and os.path.exists(checkpoint_path):
+        learner.load(checkpoint_path)
+
+
+def find_latest_checkpoint(checkpoint_dir: str) -> str | None:
+    if not os.path.isdir(checkpoint_dir):
+        return None
+
+    candidates = []
+    for name in os.listdir(checkpoint_dir):
+        if name.startswith("shared_model_") and name.endswith(".pt"):
+            stem = name[len("shared_model_"):-3]
+            if stem.isdigit():
+                candidates.append((int(stem), os.path.join(checkpoint_dir, name)))
+
+    if not candidates:
+        final_path = os.path.join(checkpoint_dir, "shared_model_final.pt")
+        return final_path if os.path.exists(final_path) else None
+
+    candidates.sort(key=lambda x: x[0])
+    return candidates[-1][1]
+
+
 def main():
     random.seed(42)
     torch.manual_seed(42)
 
-    device = "cpu"
+    model_tag = f"gnn_h{MODEL_HIDDEN_DIM}_l{MODEL_NUM_LAYERS}"
 
-    root_ckpt_dir = "multi_system_single_machine_minimal/harald_files/checkpoints"
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f"Using device: {device}")
+
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    root_ckpt_dir = os.path.join(script_dir, "checkpoints", model_tag)
     bootstrap_dir = os.path.join(root_ckpt_dir, "bootstrap")
     selfplay_dir = os.path.join(root_ckpt_dir, "self_play")
 
     os.makedirs(bootstrap_dir, exist_ok=True)
     os.makedirs(selfplay_dir, exist_ok=True)
 
-    print("=" * 80)
-    print("STAGE 1: HEURISTIC WARM-START UNTIL GOOD ENOUGH")
-    print("=" * 80)
+    # -----------------------------
+    # RESUME SETTINGS
+    # -----------------------------
+    resume_self_play = True
+    resume_checkpoint = None  # or explicit path
+    skip_warmstart = True
+    
+    if resume_self_play:
+        if resume_checkpoint is None:
+            resume_checkpoint = find_latest_checkpoint(selfplay_dir)
 
-    warmstart_checkpoint, warmstart_eval = warmstart_until_good_enough(
-        target_action_match=0.75,
-        bootstrap_chunk_games=50,
-        max_bootstrap_games=2000,
-        batch_size=128,
-        checkpoint_every=25,
-        checkpoint_dir=bootstrap_dir,
-        max_moves_per_game=500,
-        device=device)
+        if resume_checkpoint is None:
+            raise FileNotFoundError("No self-play checkpoint found to resume from.")
 
-    print("\nWarm-start evaluation summary:")
-    print(warmstart_eval)
+        resume_start_index = checkpoint_game_index(resume_checkpoint)
+
+        print("=" * 80)
+        print("RESUMING SELF-PLAY FROM CHECKPOINT")
+        print("=" * 80)
+        print(f"Checkpoint: {resume_checkpoint}")
+        print(f"Resuming from game index: {resume_start_index}")
+
+        self_play_refinement(start_checkpoint=resume_checkpoint,
+                             num_games=2000,
+                             batch_size=64,
+                             checkpoint_every=100,
+                             checkpoint_dir=selfplay_dir,
+                             device=device,
+                             heuristic_mix=0.15,
+                             max_moves_per_game=300,
+                             start_game_index=resume_start_index)
+
+        print("\nResume training complete.")
+        print(f"Final self-play checkpoint: {os.path.join(selfplay_dir, 'shared_model_final.pt')}")
+        return
+
+    if not skip_warmstart:
+        print("=" * 80)
+        print("STAGE 1: HEURISTIC WARM-START UNTIL GOOD ENOUGH")
+        print("=" * 80)
+
+        warmstart_checkpoint, warmstart_eval = warmstart_until_good_enough(
+            target_action_match=0.70,
+            bootstrap_chunk_games=100,
+            max_bootstrap_games=2000,
+            batch_size=64,
+            checkpoint_every=50,
+            checkpoint_dir=bootstrap_dir,
+            max_moves_per_game=300,
+            device=device,
+        )
+
+        print("\nWarm-start evaluation summary:")
+        print(warmstart_eval)
+
+        start_checkpoint = warmstart_checkpoint
+    else:
+        start_checkpoint = os.path.join(bootstrap_dir, "shared_model_final.pt")
+        if not os.path.exists(start_checkpoint):
+            raise FileNotFoundError(f"Warm-start checkpoint not found: {start_checkpoint}")
 
     print("=" * 80)
     print("STAGE 2: SELF-PLAY REFINEMENT")
     print("=" * 80)
 
-    self_play_refinement(start_checkpoint=warmstart_checkpoint,
-                         num_games=2000,
-                         batch_size=128,
-                         checkpoint_every=100,
-                         checkpoint_dir=selfplay_dir,
-                         device=device,
-                         heuristic_mix=0.15,
-                         max_moves_per_game=500)
+    self_play_refinement(
+        start_checkpoint=start_checkpoint,
+        num_games=2000,
+        batch_size=64,
+        checkpoint_every=100,
+        checkpoint_dir=selfplay_dir,
+        device=device,
+        heuristic_mix=0.15,
+        max_moves_per_game=300,
+    )
 
     print("\nTraining complete.")
-    print(f"Warm-start checkpoint used: {warmstart_checkpoint}")
+    print(f"Start checkpoint used: {start_checkpoint}")
     print(f"Final self-play checkpoint: {os.path.join(selfplay_dir, 'shared_model_final.pt')}")
 
 if __name__ == "__main__":
