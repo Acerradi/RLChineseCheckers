@@ -39,9 +39,9 @@ class GraphState:
     x: torch.Tensor
     edge_index: torch.Tensor
     legal_actions: List[Tuple[int, int, int]]   # (pin_id, from_idx, to_idx)
+    action_features: torch.Tensor               # [num_actions, action_feat_dim]
     controlled_colour: str
     meta: Dict[str, Any]
-
 
 class BoardGraphBuilder:
     """
@@ -92,6 +92,30 @@ class BoardGraphBuilder:
                 occ[idx] = colour
         return occ
 
+    def _target_cells(self, colour: str):
+        target_colour = self.board.colour_opposites[colour]
+        target_idxs = self.board.axial_of_colour(target_colour)
+        return [self.board.cells[i] for i in target_idxs]
+
+    def _home_cells(self, colour: str):
+        home_idxs = self.board.axial_of_colour(colour)
+        return [self.board.cells[i] for i in home_idxs]
+
+    def _min_dist_to_goal(self, idx: int, colour: str) -> int:
+        here = self.board.cells[idx]
+        targets = self._target_cells(colour)
+        return min(axial_dist(here, tgt) for tgt in targets)
+
+    def _min_dist_to_home(self, idx: int, colour: str) -> int:
+        here = self.board.cells[idx]
+        homes = self._home_cells(colour)
+        return min(axial_dist(here, home) for home in homes)
+
+    def _goal_zone_depth(self, idx: int, colour: str) -> int:
+        here = self.board.cells[idx]
+        homes = self._home_cells(colour)
+        return min(axial_dist(here, home) for home in homes)
+
     def build(self, observation: Dict[str, Any]) -> GraphState:
         state = observation["state"]
         legal_moves = observation["legal_moves"]
@@ -99,25 +123,46 @@ class BoardGraphBuilder:
 
         occ = self._occupancy_map(state)
         my_target_zone = self.board.colour_opposites[controlled_colour]
+        R = float(self.board.R)
 
         x_rows = []
         for idx, cell in enumerate(self.board.cells):
             row = []
 
+            # 1) Occupant one-hot
             occupant = occ.get(idx, "empty")
             occ_onehot = [0.0] * len(OCCUPANT_TYPES)
             occ_onehot[OCC_TO_IDX[occupant]] = 1.0
             row.extend(occ_onehot)
 
+            # 2) Zone one-hot
             zone = getattr(cell, "postype", "board")
             zone_onehot = [0.0] * len(ZONE_TYPES)
             zone_onehot[ZONE_TO_IDX.get(zone, 0)] = 1.0
             row.extend(zone_onehot)
 
+            # 3) Existing scalar features
             row.append(1.0 if occupant == controlled_colour else 0.0)
             row.append(1.0 if zone == my_target_zone else 0.0)
             row.append(1.0 if state.get("current_turn_colour") == controlled_colour else 0.0)
             row.append(min(state.get("move_count", 0) / 200.0, 1.0))
+
+            # 4) New geometry features
+            q = float(cell.q)
+            r = float(cell.r)
+            s = float(-cell.q - cell.r)
+
+            row.append(q / (2.0 * R))
+            row.append(r / (2.0 * R))
+            row.append(s / (2.0 * R))
+
+            # 5) Distance-to-goal / distance-to-home features
+            dist_goal = float(self._min_dist_to_goal(idx, controlled_colour))
+            dist_home = float(self._min_dist_to_home(idx, controlled_colour))
+
+            # Normalization: board is small, 16 is a safe rough divisor
+            row.append(min(dist_goal / 16.0, 1.0))
+            row.append(min(dist_home / 16.0, 1.0))
 
             x_rows.append(row)
 
@@ -127,19 +172,67 @@ class BoardGraphBuilder:
         pin_id_to_from = {int(pin_id): my_positions[int(pin_id)] for pin_id in legal_moves.keys()}
 
         legal_actions: List[Tuple[int, int, int]] = []
+        action_feature_rows: List[List[float]] = []
+
+        last_move = state.get("last_move")
+        last_from = int(last_move.get("from", -1)) if last_move is not None else -1
+        last_to = int(last_move.get("to", -1)) if last_move is not None else -1
+
+        target_zone = self.board.colour_opposites[controlled_colour]
+
         for pin_id, to_list in legal_moves.items():
             pid = int(pin_id)
             from_idx = pin_id_to_from[pid]
-            for to_idx in to_list:
-                legal_actions.append((pid, from_idx, int(to_idx)))
 
-        return GraphState(
-            x=x,
-            edge_index=self.edge_index,
-            legal_actions=legal_actions,
-            controlled_colour=controlled_colour,
-            meta=state,
-        )
+            from_cell = self.board.cells[from_idx]
+            from_zone = getattr(from_cell, "postype", "board")
+            from_goal_dist = self._min_dist_to_goal(from_idx, controlled_colour)
+            from_depth = self._goal_zone_depth(from_idx, controlled_colour)
+
+            for to_idx in to_list:
+                to_idx = int(to_idx)
+                to_cell = self.board.cells[to_idx]
+                to_zone = getattr(to_cell, "postype", "board")
+                to_goal_dist = self._min_dist_to_goal(to_idx, controlled_colour)
+                to_depth = self._goal_zone_depth(to_idx, controlled_colour)
+
+                progress_gain = float(from_goal_dist - to_goal_dist)
+                jump_distance = float(axial_dist(from_cell, to_cell))
+                is_jump = 1.0 if jump_distance > 1.0 else 0.0
+
+                from_in_target = 1.0 if from_zone == target_zone else 0.0
+                to_in_target = 1.0 if to_zone == target_zone else 0.0
+                enters_target = 1.0 if from_zone != target_zone and to_zone == target_zone else 0.0
+                leaves_target = 1.0 if from_zone == target_zone and to_zone != target_zone else 0.0
+
+                depth_gain = float(to_depth - from_depth)
+                is_immediate_undo = 1.0 if (from_idx == last_to and to_idx == last_from) else 0.0
+
+                # Normalize some numeric move features
+                feat_row = [progress_gain / 8.0,
+                            min(jump_distance / 8.0, 1.0),
+                            is_jump,
+                            from_in_target,
+                            to_in_target,
+                            enters_target,
+                            leaves_target,
+                            depth_gain / 8.0,
+                            is_immediate_undo]
+
+                legal_actions.append((pid, from_idx, to_idx))
+                action_feature_rows.append(feat_row)
+
+        if action_feature_rows:
+            action_features = torch.tensor(action_feature_rows, dtype=torch.float32)
+        else:
+            action_features = torch.empty((0, 9), dtype=torch.float32)
+
+        return GraphState(x=x,
+                          edge_index=self.edge_index,
+                          legal_actions=legal_actions,
+                          action_features=action_features,
+                          controlled_colour=controlled_colour,
+                          meta=state)
 
 
 class GraphConv(nn.Module):
@@ -183,12 +276,44 @@ class HeuristicPolicy(BasePolicy):
         target_idxs = self.board.axial_of_colour(target_colour)
         return [self.board.cells[i] for i in target_idxs]
 
+    def _open_target_cells(self, colour: str):
+        target_colour = self.board.colour_opposites[colour]
+        target_idxs = self.board.axial_of_colour(target_colour)
+        return [self.board.cells[i] for i in target_idxs if not self.board.cells[i].occupied]
+
     def _min_dist_to_goal(self, idx: int, colour: str) -> int:
         here = self.board.cells[idx]
+        target_colour = self.board.colour_opposites[colour]
+
+        # If already inside target zone, use geometric target distance as fallback
+        # and let the special in-goal logic decide whether to settle deeper.
+        if getattr(here, "postype", "board") == target_colour:
+            return min(axial_dist(here, tgt) for tgt in self._target_cells(colour))
+
+        open_targets = self._open_target_cells(colour)
+        if open_targets:
+            return min(axial_dist(here, tgt) for tgt in open_targets)
+
         return min(axial_dist(here, tgt) for tgt in self._target_cells(colour))
 
+    def _goal_zone_depth(self, idx: int, colour: str) -> int:
+        """
+        Higher is better once inside the target triangle.
+
+        We measure depth using distance from the player's own home triangle:
+        deeper into the opposite triangle generally means farther from home.
+        """
+        home_idxs = self.board.axial_of_colour(colour)
+        home_cells = [self.board.cells[i] for i in home_idxs]
+        here = self.board.cells[idx]
+        return min(axial_dist(here, home) for home in home_cells)
+
+    def _count_pieces_outside_target(self, colour: str, state: Dict[str, Any]) -> int:
+        target_zone = self.board.colour_opposites[colour]
+        my_positions = state["pins"][colour]
+        return sum(1 for idx in my_positions if getattr(self.board.cells[idx], "postype", "board") != target_zone)
+
     def _score_action(self, colour: str, from_idx: int, to_idx: int, state: Dict[str, Any]) -> float:
-        """Heuristic scoring of a potential move for the given colour."""
         before = self._min_dist_to_goal(from_idx, colour)
         after = self._min_dist_to_goal(to_idx, colour)
 
@@ -199,30 +324,70 @@ class HeuristicPolicy(BasePolicy):
         from_zone = getattr(self.board.cells[from_idx], "postype", "board")
         to_zone = getattr(self.board.cells[to_idx], "postype", "board")
 
-        # Main priorities
+        outside_count = self._count_pieces_outside_target(colour, state)
+
         score = 0.0
-        score += 10.0 * progress_gain          # move toward goal
-        score += 2.5 * max(0, jump_distance-1) # prefer larger jumps
-        score += 4.0 if to_zone == target_zone else 0.0 # prefer entering target zone
 
-        # Avoid undoing progress
+        # Main priorities
+        score += 14.0 * progress_gain
         if progress_gain < 0:
-            score += 6.0 * progress_gain       # stronger penalty if move goes backward
-
-        # Avoid leaving target zone once entered
+            score += 10.0 * progress_gain   # penalize backward moves
+        if progress_gain == 0 and not (from_zone == target_zone and to_zone == target_zone):
+            score -= 2.5   # small penalty for non-progressing moves outside the target zone
+        
+        # Long jumps
+        jump_bonus = 2.5 * max(0, jump_distance - 1)
+        if progress_gain > 0:
+            score += jump_bonus
+        elif progress_gain < 0:
+            score -= jump_bonus
+        
+        # Entering/leaving target zone
+        if from_zone != target_zone and to_zone == target_zone:
+            score += 10.0
+            if outside_count <= 2:
+                # bonus for entering target zone when few pieces are left outside
+                score += 10.0
         if from_zone == target_zone and to_zone != target_zone:
-            score -= 15.0
+            score -= 20.0
 
-        # Small preference for central mobility / non-trivial motion
-        score += 0.25 * jump_distance
+        # Moves inside the target zone: prefer deeper cells and discourage lateral shuffling
+        if from_zone == target_zone and to_zone == target_zone:
+            from_depth = self._goal_zone_depth(from_idx, colour)
+            to_depth = self._goal_zone_depth(to_idx, colour)
+            depth_gain = to_depth - from_depth
 
-        # Tiny noise for exploration / tie-breaking
+            score += 10.0 * depth_gain
+
+            if depth_gain == 0:
+                score -= 8.0   # discourage lateral goal-zone shuffling
+            elif depth_gain < 0:
+                score += 12.0 * depth_gain  # stronger penalty for moving "outward"
+
+            if outside_count > 1 and depth_gain <= 0:
+                score -= 6.0
+            
+            if outside_count == 1 and depth_gain < 0:
+                score -= 8.0
+
+        # Penalize immediate undo of the last move
+        last_move = state.get("last_move")
+        if last_move is not None:
+            last_from = int(last_move.get("from", -1))
+            last_to = int(last_move.get("to", -1))
+            if last_from == to_idx and last_to == from_idx:
+                score -= 20.0
+        
+        # If already in target zone, discourage moves that don't gain progress
+        if from_zone == target_zone:
+            if to_zone == target_zone and progress_gain <= 0:
+                score -= 4.0
+
+        # Add some noise for tiebreaking and exploration
         score += self.rng.uniform(-self.epsilon, self.epsilon)
-
         return score
 
     def select_action(self, observation: Dict[str, Any]) -> Tuple[int, int]:
-        """Select a move by scoring all legal moves with the heuristic and picking the best."""
         colour = observation["colour"]
         state = observation["state"]
         legal_moves = observation["legal_moves"]
@@ -246,9 +411,8 @@ class HeuristicPolicy(BasePolicy):
 
         return best_action
 
-
 class GraphEncoder(nn.Module):
-    def __init__(self, in_dim: int, hidden_dim: int = 64, num_layers: int = 3):
+    def __init__(self, in_dim: int, hidden_dim: int = 128, num_layers: int = 4):
         super().__init__()
         self.layers = nn.ModuleList()
         d = in_dim
@@ -263,27 +427,32 @@ class GraphEncoder(nn.Module):
 
 
 class MovePolicyValueNet(nn.Module):
-    def __init__(self, node_feat_dim: int, hidden_dim: int = 64, num_layers: int = 3):
+    def __init__(self, node_feat_dim: int, 
+                 action_feat_dim: int = 9,
+                 hidden_dim: int = 128,
+                 num_layers: int = 4):
+        
         super().__init__()
-        self.encoder = GraphEncoder(in_dim=node_feat_dim, hidden_dim=hidden_dim, num_layers=num_layers)
+        self.action_feat_dim = action_feat_dim
 
-        self.global_proj = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-        )
+        self.encoder = GraphEncoder(in_dim=node_feat_dim,
+                                    hidden_dim=hidden_dim,
+                                    num_layers=num_layers)
 
-        self.policy_mlp = nn.Sequential(
-            nn.Linear(hidden_dim * 3, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, 1),
-        )
+        self.global_proj = nn.Sequential(nn.Linear(hidden_dim, hidden_dim),
+                                         nn.ReLU())
 
-        self.value_mlp = nn.Sequential(
-            nn.Linear(hidden_dim, hidden_dim),
-            nn.ReLU(),
-            nn.Linear(hidden_dim, 1),
-            nn.Tanh(),
-        )
+        self.action_proj = nn.Sequential(nn.Linear(action_feat_dim, hidden_dim),
+                                         nn.ReLU())
+
+        self.policy_mlp = nn.Sequential(nn.Linear(hidden_dim * 4, hidden_dim),
+                                        nn.ReLU(),
+                                        nn.Linear(hidden_dim, 1))
+
+        self.value_mlp = nn.Sequential(nn.Linear(hidden_dim, hidden_dim),
+                                       nn.ReLU(),
+                                       nn.Linear(hidden_dim, 1),
+                                       nn.Tanh())
 
     def encode(self, graph_state: GraphState) -> Tuple[torch.Tensor, torch.Tensor]:
         node_emb = self.encoder(graph_state.x, graph_state.edge_index)
@@ -294,11 +463,14 @@ class MovePolicyValueNet(nn.Module):
         node_emb, global_emb = self.encode(graph_state)
 
         scores = []
-        for _, from_idx, to_idx in graph_state.legal_actions:
-            feat = torch.cat(
-                [node_emb[from_idx], node_emb[to_idx], global_emb],
-                dim=-1,
-            )
+        for i, (_, from_idx, to_idx) in enumerate(graph_state.legal_actions):
+            action_feat = graph_state.action_features[i]
+            action_emb = self.action_proj(action_feat)
+
+            feat = torch.cat([node_emb[from_idx],
+                              node_emb[to_idx],
+                              global_emb,
+                              action_emb], dim=-1)
             score = self.policy_mlp(feat).squeeze(-1)
             scores.append(score)
 
@@ -309,7 +481,6 @@ class MovePolicyValueNet(nn.Module):
 
         value = self.value_mlp(global_emb).squeeze(-1)
         return policy_logits, value
-
 
 @torch.no_grad()
 def evaluate_graph(model: MovePolicyValueNet, graph_state: GraphState) -> Tuple[torch.Tensor, float]:
@@ -330,17 +501,18 @@ class MyPolicy(BasePolicy):
                  board: Optional[HexBoard] = None,
                  device: str = "cpu",
                  use_mcts: bool = False,
-                 mcts_simulations: int = 64,
-                 hidden_dim: int = 64,
-                 num_layers: int = 3,):
+                 mcts_simulations: int = 28,
+                 hidden_dim: int = 128,
+                 num_layers: int = 4,):
         
         self.device = torch.device(device)
         self.board = board or HexBoard()
         self.graph_builder = BoardGraphBuilder(self.board)
 
         if model is None:
-            node_feat_dim = len(OCCUPANT_TYPES) + len(ZONE_TYPES) + 4
+            node_feat_dim = len(OCCUPANT_TYPES) + len(ZONE_TYPES) + 9
             model = MovePolicyValueNet(node_feat_dim=node_feat_dim,
+                                       action_feat_dim=9,
                                        hidden_dim=hidden_dim,
                                        num_layers=num_layers)
 
@@ -352,24 +524,32 @@ class MyPolicy(BasePolicy):
 
     @torch.no_grad()
     def select_action(self, observation: Dict[str, Any]) -> Tuple[int, int]:
-        """
-        Live deployment path.
-        Uses policy head only, because the live socket setup does not naturally
-        give us a clonable in-memory environment for tree search.
-        """
         graph_state = self.graph_builder.build(observation)
-        graph_state = GraphState(
-            x=graph_state.x.to(self.device),
-            edge_index=graph_state.edge_index.to(self.device),
-            legal_actions=graph_state.legal_actions,
-            controlled_colour=graph_state.controlled_colour,
-            meta=graph_state.meta,
-        )
+        graph_state = GraphState(x=graph_state.x.to(self.device),
+                                 edge_index=graph_state.edge_index.to(self.device),
+                                 legal_actions=graph_state.legal_actions,
+                                 action_features=graph_state.action_features.to(self.device),
+                                 controlled_colour=graph_state.controlled_colour,
+                                 meta=graph_state.meta)
 
-        logits, value = self.model(graph_state)
+        logits, _ = self.model(graph_state)
 
         if logits.numel() == 0:
             raise RuntimeError("No legal moves available")
+
+        # Simple anti-undo penalty based on public state
+        state = observation["state"]
+        last_move = state.get("last_move")
+        if last_move is not None:
+            penalized_logits = logits.clone()
+            last_from = int(last_move.get("from", -1))
+            last_to = int(last_move.get("to", -1))
+
+            for i, (pin_id, from_idx, to_idx) in enumerate(graph_state.legal_actions):
+                if from_idx == last_to and to_idx == last_from:
+                    penalized_logits[i] -= 15.0
+
+            logits = penalized_logits
 
         best_idx = int(torch.argmax(logits).item())
         pin_id, _, to_idx = graph_state.legal_actions[best_idx]
@@ -390,16 +570,15 @@ class MyPolicy(BasePolicy):
         return best_action
 
 
-def build_model(device: str = "cpu", hidden_dim: int = 64, num_layers: int = 3) -> MovePolicyValueNet:
-    node_feat_dim = len(OCCUPANT_TYPES) + len(ZONE_TYPES) + 4
-    model = MovePolicyValueNet(
-        node_feat_dim=node_feat_dim,
-        hidden_dim=hidden_dim,
-        num_layers=num_layers,
-    )
+def build_model(device: str = "cpu", hidden_dim: int = 128, num_layers: int = 4) -> MovePolicyValueNet:
+    node_feat_dim = len(OCCUPANT_TYPES) + len(ZONE_TYPES) + 9
+    model = MovePolicyValueNet(node_feat_dim=node_feat_dim,
+                               action_feat_dim=9,
+                               hidden_dim=hidden_dim,
+                               num_layers=num_layers)
     return model.to(device)
 
-def save_model(model: MovePolicyValueNet, path: str, hidden_dim: int = 64, num_layers: int = 3) -> None:
+def save_model(model: MovePolicyValueNet, path: str, hidden_dim: int = 128, num_layers: int = 4) -> None:
     payload = {
         "model_state_dict": model.state_dict(),
         "hidden_dim": hidden_dim,
@@ -407,7 +586,7 @@ def save_model(model: MovePolicyValueNet, path: str, hidden_dim: int = 64, num_l
     }
     torch.save(payload, path)
 
-def load_model(path: str, device: str = "cpu", hidden_dim: int = 64, num_layers: int = 3) -> MovePolicyValueNet:
+def load_model(path: str, device: str = "cpu", hidden_dim: int = 128, num_layers: int = 4) -> MovePolicyValueNet:
     payload = torch.load(path, map_location=device)
 
     # backward compatibility: old checkpoints may just be raw state_dicts
@@ -486,14 +665,12 @@ class MCTSNode:
             self.children = {}
 
 class NeuralMCTS:
-    def __init__(
-        self,
-        model: MovePolicyValueNet,
-        graph_builder: BoardGraphBuilder,
-        device: str = "cpu",
-        c_puct: float = 1.5,
-        num_simulations: int = 64,
-    ):
+    def __init__(self, model: MovePolicyValueNet,
+                 graph_builder: BoardGraphBuilder,
+                 device: str = "cpu",
+                 c_puct: float = 1.5,
+                 num_simulations: int = 64):
+        
         self.model = model
         self.graph_builder = graph_builder
         self.device = torch.device(device)
@@ -503,13 +680,12 @@ class NeuralMCTS:
     def _expand(self, node: MCTSNode, env: SearchEnvironment) -> float:
         obs = env.observe(node.current_colour)
         graph_state = self.graph_builder.build(obs)
-        graph_state = GraphState(
-            x=graph_state.x.to(self.device),
-            edge_index=graph_state.edge_index.to(self.device),
-            legal_actions=graph_state.legal_actions,
-            controlled_colour=graph_state.controlled_colour,
-            meta=graph_state.meta,
-        )
+        graph_state = GraphState(x=graph_state.x.to(self.device),
+                                 edge_index=graph_state.edge_index.to(self.device),
+                                 legal_actions=graph_state.legal_actions,
+                                 action_features=graph_state.action_features.to(self.device),
+                                 controlled_colour=graph_state.controlled_colour,
+                                 meta=graph_state.meta)
 
         priors, value = evaluate_graph(self.model, graph_state)
         actions = [(pin_id, to_idx) for pin_id, _, to_idx in graph_state.legal_actions]

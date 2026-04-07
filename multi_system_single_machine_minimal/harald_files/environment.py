@@ -124,26 +124,47 @@ class ChineseCheckersEnv:
         if self.game is None:
             self.reset()
 
+        truncated = False
+        illegal_attempts = 0
+
         for _ in range(max_moves):
             assert self.game is not None
+
             if self.game.status == "FINISHED":
                 break
+
             colour = self.game.current_turn_colour()
             if colour is None:
                 break
+
             policy = policy_by_colour[colour]
             obs = self.observe(colour)
             action = policy.select_action(obs)
-            self.step(colour, action)
+
+            # Defensive legality check before step
+            pin_id, to_index = action
+            legal_for_pin = obs["legal_moves"].get(str(pin_id), obs["legal_moves"].get(pin_id, []))
+            if to_index not in legal_for_pin:
+                illegal_attempts += 1
+                raise RuntimeError(f"Policy attempted illegal move: colour={colour}, pin_id={pin_id}, "
+                                   f"to_index={to_index}, legal_for_pin={legal_for_pin}")
+
+            step_result = self.step(colour, action)
+            if not step_result.info.get("ok", False):
+                illegal_attempts += 1
+                raise RuntimeError(f"Environment rejected move: colour={colour}, action={action}, "
+                                   f"error={step_result.info.get('error')}")
+        else:
+            truncated = True
 
         assert self.game is not None
         self.game.compute_scores()
-        return {
-            "status": self.game.status,
-            "state": self.game.to_public_state(),
-            "scores": {
-                p.colour: self.game.scores.get(p.player_id, {})
-                for p in self.game.players
-            },
-            "history": list(self.game.history),
-        }
+
+        return {"status": self.game.status,
+                "state": self.game.to_public_state(),
+                "scores": {p.colour: self.game.scores.get(p.player_id, {})
+                           for p in self.game.players},
+                "history": list(self.game.history),
+                "truncated": truncated,
+                "illegal_attempts": illegal_attempts,
+                "max_moves": max_moves}

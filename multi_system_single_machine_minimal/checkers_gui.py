@@ -71,5 +71,8 @@ class BoardGUI:
 
     def refresh(self, newpins):
         self.pins = newpins
+        self.canvas.delete("all")
         self.draw_board()
         self.draw_pins()
+        self.root.update_idletasks()
+        self.root.update()

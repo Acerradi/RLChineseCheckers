@@ -72,3 +72,6 @@ Use that policy in:
 This scaffold mirrors the **public interface and rules flow** of your current system, but it does not duplicate the human-only parts of the original client, such as prompting for keyboard input or manual start confirmation.
 
 That is intentional: the policy should learn the game, not the terminal workflow.
+
+
+python evaluate_checkpoints.py --target-checkpoint checkpoints/gnn_h64_l3/self_play/shared_model_final.pt --earlier-checkpoint checkpoints/gnn_h64_l3/bootstrap/shared_model_final.pt --device cpu --repeats 20 --max-moves 300 --players 2 3 4 5 6 --json-out eval_reports/selfplay_final_vs_bootstrap.json
