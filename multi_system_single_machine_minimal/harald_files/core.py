@@ -36,8 +36,22 @@ class GameCore:
     model trained against this core can later be wrapped by the socket client.
     """
 
-    def __init__(self, *, game_id: Optional[str] = None, primary_colours: Optional[List[str]] = None, shuffle_primary: bool = True,
-                 turn_timeout_sec: Optional[float] = None, game_time_limit_sec: Optional[float] = None, enable_real_time_limits: bool = False,):
+    def __init__(self, *,
+             game_id: Optional[str] = None,
+             primary_colours: Optional[List[str]] = None,
+             shuffle_primary: bool = True,
+             turn_timeout_sec: Optional[float] = None,
+             game_time_limit_sec: Optional[float] = None,
+             enable_real_time_limits: bool = False,
+
+             # Training/adjudication controls
+             enable_training_adjudication: bool = True,
+             repetition_limit: int = 3,
+             stall_limit_per_colour: int = 24,
+             hard_stall_limit_per_colour: int = 48,
+             stuck_home_grace_moves: int = 35,
+             max_stranded_home_turns: int = 20):
+        
         self.game_id = game_id or str(uuid.uuid4())
         self.board = HexBoard()
         self.players: List[PlayerState] = []
@@ -65,6 +79,20 @@ class GameCore:
         self.turn_timeout_notice: Optional[str] = None
         self.scores: Dict[str, Dict[str, float]] = {}
         self.history: List[Dict[str, Any]] = []
+
+        # Training/adjudication state
+        self.enable_training_adjudication = enable_training_adjudication
+        self.repetition_limit = repetition_limit
+        self.stall_limit_per_colour = stall_limit_per_colour
+        self.hard_stall_limit_per_colour = hard_stall_limit_per_colour
+        self.stuck_home_grace_moves = stuck_home_grace_moves
+        self.max_stranded_home_turns = max_stranded_home_turns
+
+        self.state_repetition_counts: Dict[tuple, int] = {}
+        self.colour_stall_counts: Dict[str, int] = {}
+        self.colour_stranded_home_turns: Dict[str, int] = {}
+        self.adjudication_reason: Optional[str] = None
+        self.last_adjudication_event: Optional[Dict[str, Any]] = None
 
     def assign_colour(self) -> Optional[str]:
         n = len(self.players) + 1
@@ -116,6 +144,8 @@ class GameCore:
             self.total_start_ns = time.perf_counter_ns()
             self.compute_turn_order()
             self.turn_started_ns = time.perf_counter_ns()
+        if self.enable_training_adjudication:
+            self.state_repetition_counts[self.board_state_key()] = 1
 
     def _init_pins(self, colour: str) -> None:
         if colour in self.pins_by_colour:
@@ -218,6 +248,9 @@ class GameCore:
         if to_index not in legal:
             return {"ok": False, "error": "Illegal move"}
 
+        before_progress = self.training_progress_score(pl.colour)
+        was_forced = self.is_forced_move(pl.colour)
+
         if self.enable_real_time_limits and self.turn_started_ns:
             dt = (time.perf_counter_ns() - self.turn_started_ns) / 1e9
             pl.time_taken_sec += dt
@@ -235,15 +268,24 @@ class GameCore:
         self.move_count += 1
         self.move_times_ms.append(move_ms)
 
-        self.last_move = {
-            "pin_id": pin_id,
-            "from": from_idx,
-            "to": to_index,
-            "by": pl.name,
-            "colour": pl.colour,
-            "move_ms": move_ms,
-        }
+        self.last_move = {"pin_id": pin_id,
+                          "from": from_idx,
+                          "to": to_index,
+                          "by": pl.name,
+                          "colour": pl.colour,
+                          "move_ms": move_ms}
         self.history.append(dict(self.last_move))
+
+        adjudication_event = None
+        if self.enable_training_adjudication:
+            after_progress = self.training_progress_score(pl.colour)
+            adjudication_event = self.update_repetition_stall_and_stranding(moved_colour=pl.colour,
+                                                                            moved_pin_id=pin_id,
+                                                                            from_idx=from_idx,
+                                                                            to_idx=to_index,
+                                                                            before_progress=before_progress,
+                                                                            after_progress=after_progress,
+                                                                            was_forced=was_forced)
 
         pl.status = self.check_player_status(pl.colour)
         if pl.status == "WIN":
@@ -258,16 +300,24 @@ class GameCore:
                 winner = next(p for p in live if p not in draws)
                 self.status = "FINISHED"
                 self.compute_scores()
-                return {
-                    "ok": True,
-                    "status": "WIN",
+                return {"ok": True,
+                        "status": "WIN",
+                        "state": self.to_public_state(),
+                        "msg": f"{winner.name} Wins, others Draw."}
+        if self.status == "FINISHED":
+            self.compute_scores()
+            return {"ok": True,
+                    "status": "ADJUDICATED",
                     "state": self.to_public_state(),
-                    "msg": f"{winner.name} Wins, others Draw.",
-                }
+                    "msg": self.adjudication_reason,
+                    "adjudication": adjudication_event}
 
         self.advance_turn()
         self.compute_scores()
-        return {"ok": True, "status": "CONTINUE", "state": self.to_public_state()}
+        return {"ok": True,
+                "status": "CONTINUE",
+                "state": self.to_public_state(),
+                "adjudication": adjudication_event}
 
     def compute_scores(self) -> None:
         """Compute scores for all players based on their current state."""
@@ -311,28 +361,294 @@ class GameCore:
 
     def to_public_state(self) -> Dict[str, Any]:
         """Return a representation of the game state that can be safely shared with clients."""
-        return {
-            "game_id": self.game_id,
-            "status": self.status,
-            "players": [
-                {
-                    "player_id": pl.player_id,
-                    "name": pl.name,
-                    "colour": pl.colour,
-                    "ready": pl.ready,
-                    "status": pl.status,
-                    "score": self.scores.get(pl.player_id),
-                }
-                for pl in self.players
-            ],
-            "pins": {colour: [p.axialindex for p in pins] for colour, pins in self.pins_by_colour.items()},
-            "move_count": self.move_count,
-            "current_turn_colour": self.current_turn_colour(),
-            "turn_order": list(self.turn_order),
-            "last_move": self.last_move,
-            "turn_timeout_notice": self.turn_timeout_notice,
+        return {"game_id": self.game_id,
+                "status": self.status,
+                "players": [{"player_id": pl.player_id,
+                             "name": pl.name,
+                             "colour": pl.colour,
+                             "ready": pl.ready,
+                             "status": pl.status,
+                             "score": self.scores.get(pl.player_id)} for pl in self.players],
+                "pins": {colour: [p.axialindex for p in pins] for colour, pins in self.pins_by_colour.items()},
+                "move_count": self.move_count,
+                "current_turn_colour": self.current_turn_colour(),
+                "turn_order": list(self.turn_order),
+                "last_move": self.last_move,
+                "turn_timeout_notice": self.turn_timeout_notice,
+
+                # New training diagnostics
+                "adjudication_reason": self.adjudication_reason,
+                "last_adjudication_event": self.last_adjudication_event,
+                "training_progress": {pl.colour: self.training_progress_score(pl.colour)
+                                      for pl in self.players},
+                "stranded_home_pieces": {pl.colour: self.count_stranded_home_pieces(pl.colour)
+                                         for pl in self.players},
+                "home_pieces": {pl.colour: self.count_home_pieces(pl.colour)
+                                for pl in self.players}}
+
+    def _axial_dist(self, a, b) -> int:
+        dq = abs(a.q - b.q)
+        dr = abs(a.r - b.r)
+        ds = abs((-a.q - a.r) - (-b.q - b.r))
+        return max(dq, dr, ds)
+
+    def board_state_key(self) -> tuple:
+        """
+        Hashable board state including side to move.
+
+        Including current_turn_colour matters because the same board position with
+        a different side to move is not the same game state.
+        """
+        pieces = []
+        for colour in sorted(self.pins_by_colour.keys()):
+            positions = tuple(sorted(p.axialindex for p in self.pins_by_colour[colour]))
+            pieces.append((colour, positions))
+
+        return (self.current_turn_colour(), tuple(pieces))
+
+    def count_total_legal_moves(self, colour: str) -> int:
+        legal = self.get_legal_moves_for_colour(colour)
+        return sum(len(moves) for moves in legal.values())
+
+    def is_forced_move(self, colour: str) -> bool:
+        """
+        Used to avoid punishing repetition/stalling when the player truly has only
+        one legal move available.
+        """
+        return self.count_total_legal_moves(colour) <= 1
+
+    def training_progress_score(self, colour: str) -> float:
+        """
+        Clean score for training/adjudication.
+
+        Higher is better. This intentionally avoids time_score and move_score,
+        because those are useful for reporting but noisy as learning signals.
+        """
+        pins = self.pins_by_colour[colour]
+        target_colour = self.board.colour_opposites[colour]
+        target_idxs = self.board.axial_of_colour(target_colour)
+        target_cells = [self.board.cells[i] for i in target_idxs]
+
+        pins_in_goal = 0
+        total_dist = 0
+        home_pieces = 0
+        stranded_home = self.count_stranded_home_pieces(colour)
+
+        for pin in pins:
+            cell = self.board.cells[pin.axialindex]
+            zone = getattr(cell, "postype", "board")
+
+            if zone == target_colour:
+                pins_in_goal += 1
+            else:
+                total_dist += min(self._axial_dist(cell, tgt) for tgt in target_cells)
+
+            if zone == colour:
+                home_pieces += 1
+
+        # Weighting rationale:
+        # - goal pieces are very valuable
+        # - distance matters continuously
+        # - home pieces are bad
+        # - stranded home pieces are very bad
+        return (
+            pins_in_goal * 30.0
+            - float(total_dist)
+            - home_pieces * 8.0
+            - stranded_home * 30.0
+        )
+
+    def normalized_training_value(self, colour: str) -> float:
+        """
+        Multiplayer-safe value target in [-1, 1] based on relative progress.
+
+        This is useful for truncated/adjudicated games where nobody officially won.
+        """
+        if not self.players:
+            return 0.0
+
+        scores = {pl.colour: self.training_progress_score(pl.colour) for pl in self.players}
+        my_score = scores[colour]
+        others = [v for c, v in scores.items() if c != colour]
+
+        if not others:
+            return 0.0
+
+        best_other = max(others)
+        diff = my_score - best_other
+
+        # Scale controls how quickly progress differences saturate.
+        # 60 is a reasonable starting value for this board size.
+        return max(-1.0, min(1.0, diff / 60.0))
+
+    def count_home_pieces(self, colour: str) -> int:
+        pins = self.pins_by_colour[colour]
+        return sum(
+            1
+            for p in pins
+            if getattr(self.board.cells[p.axialindex], "postype", "board") == colour
+        )
+
+    def count_stranded_home_pieces(self, colour: str) -> int:
+        """
+        Counts pieces still in their home triangle that currently have no legal move
+        directly out of the home triangle.
+
+        This targets the failure mode you described: a piece gets left behind and
+        becomes surrounded, forcing useless shuffling elsewhere.
+        """
+        stranded = 0
+        pins = self.pins_by_colour[colour]
+
+        for pin in pins:
+            from_cell = self.board.cells[pin.axialindex]
+            from_zone = getattr(from_cell, "postype", "board")
+
+            if from_zone != colour:
+                continue
+
+            legal_moves = pin.getPossibleMoves()
+            can_leave_home = False
+
+            for to_idx in legal_moves:
+                to_cell = self.board.cells[int(to_idx)]
+                to_zone = getattr(to_cell, "postype", "board")
+                if to_zone != colour:
+                    can_leave_home = True
+                    break
+
+            if not can_leave_home:
+                stranded += 1
+
+        return stranded
+
+    def adjudicate_by_progress(self, reason: str = "PROGRESS_ADJUDICATION") -> None:
+        """
+        End the game and mark the player with the best clean progress score as winner.
+        """
+        if not self.players:
+            self.status = "FINISHED"
+            self.adjudication_reason = reason
+            return
+
+        progress_by_colour = {
+            pl.colour: self.training_progress_score(pl.colour)
+            for pl in self.players
         }
 
+        best_colour = max(progress_by_colour, key=progress_by_colour.get)
+
+        for pl in self.players:
+            pl.status = "WIN" if pl.colour == best_colour else "LOSS"
+
+        self.status = "FINISHED"
+        self.adjudication_reason = reason
+        self.compute_scores()
+
+    def update_repetition_stall_and_stranding(self, *,
+        moved_colour: str,
+        moved_pin_id: int,
+        from_idx: int,
+        to_idx: int,
+        before_progress: float,
+        after_progress: float,
+        was_forced: bool,
+    ) -> Dict[str, Any]:
+        """
+        Called after a successful move.
+
+        Repetition/stall penalties are suppressed if the player had only one legal
+        move before moving. Stranded-home penalties are not suppressed, because they
+        are meant to teach the model not to create that state earlier in the game.
+        """
+        event = {
+            "forced": was_forced,
+            "repetition_count": 0,
+            "stall_count": 0,
+            "home_pieces": self.count_home_pieces(moved_colour),
+            "stranded_home_pieces": self.count_stranded_home_pieces(moved_colour),
+            "repetition_penalty": 0.0,
+            "stall_penalty": 0.0,
+            "stranded_home_penalty": 0.0,
+            "adjudicated": False,
+            "reason": None,
+        }
+
+        # -------------------------
+        # Repetition detection
+        # -------------------------
+        key = self.board_state_key()
+        rep_count = self.state_repetition_counts.get(key, 0) + 1
+        self.state_repetition_counts[key] = rep_count
+        event["repetition_count"] = rep_count
+
+        if rep_count >= self.repetition_limit and not was_forced:
+            event["repetition_penalty"] = -0.10 * (rep_count - self.repetition_limit + 1)
+
+        # -------------------------
+        # Stall detection
+        # -------------------------
+        progress_delta = after_progress - before_progress
+
+        if progress_delta > 0.01:
+            self.colour_stall_counts[moved_colour] = 0
+        else:
+            self.colour_stall_counts[moved_colour] = self.colour_stall_counts.get(moved_colour, 0) + 1
+
+        stall_count = self.colour_stall_counts[moved_colour]
+        event["stall_count"] = stall_count
+
+        if stall_count >= self.stall_limit_per_colour and not was_forced:
+            event["stall_penalty"] = -0.05 * (stall_count - self.stall_limit_per_colour + 1)
+
+        # -------------------------
+        # Stranded home-piece detection
+        # -------------------------
+        stranded = event["stranded_home_pieces"]
+
+        if self.move_count >= self.stuck_home_grace_moves and stranded > 0:
+            self.colour_stranded_home_turns[moved_colour] = (
+                self.colour_stranded_home_turns.get(moved_colour, 0) + 1
+            )
+
+            stranded_turns = self.colour_stranded_home_turns[moved_colour]
+
+            # Small but persistent penalty. The value head will propagate this back
+            # to earlier decisions that left the piece behind.
+            event["stranded_home_penalty"] = -0.03 * stranded * min(stranded_turns, 10)
+
+            # If the player moves a non-home piece while stranded home pieces exist,
+            # penalize a bit more. This discourages goal-triangle shuffling while a
+            # home piece remains trapped.
+            from_zone = getattr(self.board.cells[from_idx], "postype", "board")
+            to_zone = getattr(self.board.cells[to_idx], "postype", "board")
+
+            if from_zone != moved_colour and to_zone != moved_colour:
+                event["stranded_home_penalty"] -= 0.05 * stranded
+        else:
+            self.colour_stranded_home_turns[moved_colour] = 0
+
+        # -------------------------
+        # Hard adjudication
+        # -------------------------
+        if (
+            stall_count >= self.hard_stall_limit_per_colour
+            and not was_forced
+        ):
+            event["adjudicated"] = True
+            event["reason"] = f"STALL_LIMIT_REACHED:{moved_colour}"
+            self.adjudicate_by_progress(event["reason"])
+
+        elif (
+            self.colour_stranded_home_turns.get(moved_colour, 0) >= self.max_stranded_home_turns
+            and stranded > 0
+        ):
+            event["adjudicated"] = True
+            event["reason"] = f"STRANDED_HOME_LIMIT_REACHED:{moved_colour}"
+            self.adjudicate_by_progress(event["reason"])
+
+        self.last_adjudication_event = event
+        return event
 
 def make_observation(game: GameCore, colour: str) -> Dict[str, Any]:
     """Return the same style of observation your deployed bot can consume.

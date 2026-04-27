@@ -121,6 +121,11 @@ class BoardGraphBuilder:
         legal_moves = observation["legal_moves"]
         controlled_colour = observation["colour"]
 
+        goal_dist = {idx: self._min_dist_to_goal(idx, controlled_colour)
+            for idx in range(len(self.board.cells))}
+        depth_dist = {idx: self._goal_zone_depth(idx, controlled_colour)
+            for idx in range(len(self.board.cells))}
+
         occ = self._occupancy_map(state)
         my_target_zone = self.board.colour_opposites[controlled_colour]
         R = float(self.board.R)
@@ -157,8 +162,8 @@ class BoardGraphBuilder:
             row.append(s / (2.0 * R))
 
             # 5) Distance-to-goal / distance-to-home features
-            dist_goal = float(self._min_dist_to_goal(idx, controlled_colour))
-            dist_home = float(self._min_dist_to_home(idx, controlled_colour))
+            dist_goal = float(goal_dist[idx])
+            dist_home = float(depth_dist[idx])
 
             # Normalization: board is small, 16 is a safe rough divisor
             row.append(min(dist_goal / 16.0, 1.0))
@@ -186,16 +191,16 @@ class BoardGraphBuilder:
 
             from_cell = self.board.cells[from_idx]
             from_zone = getattr(from_cell, "postype", "board")
-            from_goal_dist = self._min_dist_to_goal(from_idx, controlled_colour)
-            from_depth = self._goal_zone_depth(from_idx, controlled_colour)
+            from_goal_dist = goal_dist[from_idx]
+            from_depth = depth_dist[from_idx]
 
             for to_idx in to_list:
                 to_idx = int(to_idx)
                 to_cell = self.board.cells[to_idx]
                 to_zone = getattr(to_cell, "postype", "board")
-                to_goal_dist = self._min_dist_to_goal(to_idx, controlled_colour)
-                to_depth = self._goal_zone_depth(to_idx, controlled_colour)
-
+                to_goal_dist = goal_dist[to_idx]
+                to_depth = depth_dist[to_idx]
+                
                 progress_gain = float(from_goal_dist - to_goal_dist)
                 jump_distance = float(axial_dist(from_cell, to_cell))
                 is_jump = 1.0 if jump_distance > 1.0 else 0.0
@@ -276,11 +281,6 @@ class HeuristicPolicy(BasePolicy):
         target_idxs = self.board.axial_of_colour(target_colour)
         return [self.board.cells[i] for i in target_idxs]
 
-    def _open_target_cells(self, colour: str):
-        target_colour = self.board.colour_opposites[colour]
-        target_idxs = self.board.axial_of_colour(target_colour)
-        return [self.board.cells[i] for i in target_idxs if not self.board.cells[i].occupied]
-
     def _min_dist_to_goal(self, idx: int, colour: str) -> int:
         here = self.board.cells[idx]
         target_colour = self.board.colour_opposites[colour]
@@ -290,9 +290,9 @@ class HeuristicPolicy(BasePolicy):
         if getattr(here, "postype", "board") == target_colour:
             return min(axial_dist(here, tgt) for tgt in self._target_cells(colour))
 
-        open_targets = self._open_target_cells(colour)
+        open_targets = [i for i in self._open_target_indices(colour)]
         if open_targets:
-            return min(axial_dist(here, tgt) for tgt in open_targets)
+            return min(axial_dist(here, self.board.cells[i]) for i in open_targets)
 
         return min(axial_dist(here, tgt) for tgt in self._target_cells(colour))
 
@@ -313,11 +313,58 @@ class HeuristicPolicy(BasePolicy):
         my_positions = state["pins"][colour]
         return sum(1 for idx in my_positions if getattr(self.board.cells[idx], "postype", "board") != target_zone)
 
+    def _count_pieces_in_home(self, colour: str, state: Dict[str, Any]) -> int:
+        my_positions = state["pins"][colour]
+        return sum(1 for idx in my_positions
+            if getattr(self.board.cells[idx], "postype", "board") == colour)
+
+    def _open_target_indices(self, colour: str):
+        target_colour = self.board.colour_opposites[colour]
+        target_idxs = self.board.axial_of_colour(target_colour)
+        return [i for i in target_idxs if not self.board.cells[i].occupied]
+
+    def _min_dist_to_open_target(self, idx: int, colour: str) -> int:
+        here = self.board.cells[idx]
+        open_target_idxs = self._open_target_indices(colour)
+
+        if open_target_idxs:
+            return min(axial_dist(here, self.board.cells[i]) for i in open_target_idxs)
+
+        # fallback if target is full
+        return self._min_dist_to_goal(idx, colour)
+
+    def _recent_repetition_penalty(self, colour: str, from_idx: int, to_idx: int, state: Dict[str, Any]) -> float:
+        """
+        Penalize immediate undo strongly, and repeated oscillation patterns mildly.
+        Uses last_move only because that is what your public state currently exposes.
+        """
+        penalty = 0.0
+        last_move = state.get("last_move")
+        if last_move is not None and last_move.get("colour") == colour:
+            last_from = int(last_move.get("from", -1))
+            last_to = int(last_move.get("to", -1))
+
+            # immediate undo
+            if last_from == to_idx and last_to == from_idx:
+                penalty -= 20.0
+
+            # weak penalty for returning to the same origin or destination pattern
+            if last_to == to_idx:
+                penalty -= 4.0
+            if last_from == from_idx:
+                penalty -= 2.0
+
+        return penalty
+
     def _score_action(self, colour: str, from_idx: int, to_idx: int, state: Dict[str, Any]) -> float:
         before = self._min_dist_to_goal(from_idx, colour)
         after = self._min_dist_to_goal(to_idx, colour)
 
+        before_open = self._min_dist_to_open_target(from_idx, colour)
+        after_open = self._min_dist_to_open_target(to_idx, colour)
+
         progress_gain = before - after
+        open_target_gain = before_open - after_open
         jump_distance = axial_dist(self.board.cells[from_idx], self.board.cells[to_idx])
 
         target_zone = self.board.colour_opposites[colour]
@@ -325,21 +372,27 @@ class HeuristicPolicy(BasePolicy):
         to_zone = getattr(self.board.cells[to_idx], "postype", "board")
 
         outside_count = self._count_pieces_outside_target(colour, state)
+        home_count = self._count_pieces_in_home(colour, state)
+        move_count = int(state.get("move_count", 0))
+
 
         score = 0.0
 
         # Main priorities
-        score += 14.0 * progress_gain
+        score += 14.0 * progress_gain # primary reward for moves that reduce distance to goal
+        score += 10.0 * open_target_gain # reward moves that approach open targets, even if they don't immediately reduce goal distance
         if progress_gain < 0:
             score += 10.0 * progress_gain   # penalize backward moves
+        if open_target_gain < 0:
+            score += 14.0 * open_target_gain  # stronger penalty for moves that don't approach an open target
         if progress_gain == 0 and not (from_zone == target_zone and to_zone == target_zone):
             score -= 2.5   # small penalty for non-progressing moves outside the target zone
         
         # Long jumps
         jump_bonus = 2.5 * max(0, jump_distance - 1)
-        if progress_gain > 0:
+        if progress_gain > 0 or open_target_gain > 0:
             score += jump_bonus
-        elif progress_gain < 0:
+        elif progress_gain < 0 and open_target_gain < 0:
             score -= jump_bonus
         
         # Entering/leaving target zone
@@ -370,18 +423,27 @@ class HeuristicPolicy(BasePolicy):
             if outside_count == 1 and depth_gain < 0:
                 score -= 8.0
 
+        # Bonus for leaving home zone
+        if from_zone == colour and to_zone != colour:
+            score += 12.0
+
+        if home_count > 0:
+            # urgency grows over time if pieces remain in home
+            home_urgency = min(move_count / 40.0, 4.0)
+
+            if from_zone == colour:
+                score += 6.0 * home_urgency
+            else:
+                # mild pressure to not ignore evacuation forever
+                score -= 1.0 * home_urgency
+
+
         # Penalize immediate undo of the last move
-        last_move = state.get("last_move")
-        if last_move is not None:
-            last_from = int(last_move.get("from", -1))
-            last_to = int(last_move.get("to", -1))
-            if last_from == to_idx and last_to == from_idx:
-                score -= 20.0
+        score += self._recent_repetition_penalty(colour, from_idx, to_idx, state)
         
         # If already in target zone, discourage moves that don't gain progress
-        if from_zone == target_zone:
-            if to_zone == target_zone and progress_gain <= 0:
-                score -= 4.0
+        if from_zone == target_zone and to_zone == target_zone and progress_gain <= 0 and open_target_gain <= 0:
+            score -= 8.0
 
         # Add some noise for tiebreaking and exploration
         score += self.rng.uniform(-self.epsilon, self.epsilon)
@@ -677,31 +739,56 @@ class NeuralMCTS:
         self.c_puct = c_puct
         self.num_simulations = num_simulations
 
-    def _expand(self, node: MCTSNode, env: SearchEnvironment) -> float:
-        obs = env.observe(node.current_colour)
-        graph_state = self.graph_builder.build(obs)
-        graph_state = GraphState(x=graph_state.x.to(self.device),
-                                 edge_index=graph_state.edge_index.to(self.device),
-                                 legal_actions=graph_state.legal_actions,
-                                 action_features=graph_state.action_features.to(self.device),
-                                 controlled_colour=graph_state.controlled_colour,
-                                 meta=graph_state.meta)
+    def _graph_for_observation(self, obs: Dict[str, Any]) -> GraphState:
+        gs = self.graph_builder.build(obs)
+        return GraphState(
+            x=gs.x.to(self.device),
+            edge_index=gs.edge_index.to(self.device),
+            legal_actions=gs.legal_actions,
+            action_features=gs.action_features.to(self.device),
+            controlled_colour=gs.controlled_colour,
+            meta=gs.meta,
+        )
 
-        priors, value = evaluate_graph(self.model, graph_state)
+    def _evaluate_value_for_colour(self, env: SearchEnvironment, colour: str) -> float:
+        """
+        Evaluate the position from `colour`'s perspective.
+
+        This is what makes the MCTS multiplayer-safe: the backed-up value is
+        always from the root learner's perspective, not from alternating players.
+        """
+        obs = env.observe(colour)
+        gs = self._graph_for_observation(obs)
+
+        self.model.eval()
+        with torch.no_grad():
+            _, value = self.model(gs)
+
+        return float(value.detach().cpu())
+
+    def _expand(self, node: MCTSNode, env: SearchEnvironment, root_colour: str) -> float:
+        """
+        Expand legal actions for node.current_colour, but return value from
+        root_colour's perspective.
+        """
+        obs = env.observe(node.current_colour)
+        graph_state = self._graph_for_observation(obs)
+
+        priors, _ = evaluate_graph(self.model, graph_state)
         actions = [(pin_id, to_idx) for pin_id, _, to_idx in graph_state.legal_actions]
 
         if not actions:
             node.terminal = True
-            node.terminal_value = value
+            node.terminal_value = self._evaluate_value_for_colour(env, root_colour)
             node.expanded = True
-            return value
+            return node.terminal_value
 
         node.actions = actions
         for action, prior in zip(actions, priors.tolist()):
             node.children[action] = ChildStats(prior=prior)
 
         node.expanded = True
-        return value
+        return self._evaluate_value_for_colour(env, root_colour)
 
     def _select(self, node: MCTSNode) -> Tuple[int, int]:
         total_visits = sum(ch.visit_count for ch in node.children.values())
@@ -717,14 +804,42 @@ class NeuralMCTS:
                 best_score = score
                 best_action = action
 
+        if best_action is None:
+            raise RuntimeError("MCTS selection failed: no best action")
+
         return best_action
 
-    def _simulate(self, env: SearchEnvironment, node: MCTSNode) -> float:
+    def _terminal_value_for_root(
+        self,
+        *,
+        root_colour: str,
+        reward: float,
+        done: bool,
+        info: Dict[str, Any],
+        env: SearchEnvironment,
+    ) -> float:
+        """
+        Return terminal value from root_colour's perspective.
+
+        Prefer explicit environment adjudication/progress if available.
+        Fall back to the immediate reward only if no better info exists.
+        """
+        if not done:
+            return self._evaluate_value_for_colour(env, root_colour)
+
+        # If LocalSearchEnv implements value_for_colour, use it.
+        if hasattr(env, "value_for_colour"):
+            return float(env.value_for_colour(root_colour))
+
+        # Fallback for compatibility.
+        return float(reward)
+
+    def _simulate(self, env: SearchEnvironment, node: MCTSNode, root_colour: str) -> float:
         if node.terminal:
             return node.terminal_value
 
         if not node.expanded:
-            return self._expand(node, env)
+            return self._expand(node, env, root_colour)
 
         action = self._select(node)
         next_env = env.clone()
@@ -734,22 +849,36 @@ class NeuralMCTS:
 
         if stats.child is None:
             next_colour = next_env.current_player_colour() if not done else node.current_colour
-            stats.child = MCTSNode(current_colour=next_colour, terminal=done, terminal_value=reward if done else 0.0)
+            stats.child = MCTSNode(
+                current_colour=next_colour,
+                terminal=done,
+                terminal_value=0.0,
+            )
 
-        child_value = reward if done else self._simulate(next_env, stats.child)
+        if done:
+            value = self._terminal_value_for_root(
+                root_colour=root_colour,
+                reward=reward,
+                done=done,
+                info=info,
+                env=next_env,
+            )
+            stats.child.terminal_value = value
+        else:
+            value = self._simulate(next_env, stats.child, root_colour)
 
-        # simple alternating-sign backup; workable first approximation
-        backed_up = -child_value
-
+        # Critical change:
+        # Do NOT negate. Value is already from root_colour's perspective.
         stats.visit_count += 1
-        stats.value_sum += backed_up
-        return backed_up
+        stats.value_sum += value
+        return value
 
     def search(self, env: SearchEnvironment) -> Tuple[Tuple[int, int], List[Tuple[int, int]], torch.Tensor]:
-        root = MCTSNode(current_colour=env.current_player_colour())
+        root_colour = env.current_player_colour()
+        root = MCTSNode(current_colour=root_colour)
 
         for _ in range(self.num_simulations):
-            self._simulate(env.clone(), root)
+            self._simulate(env.clone(), root, root_colour)
 
         actions = list(root.children.keys())
         visits = torch.tensor([root.children[a].visit_count for a in actions], dtype=torch.float32)
@@ -760,5 +889,3 @@ class NeuralMCTS:
         probs = visits / visits.sum()
         best_idx = int(torch.argmax(visits).item())
         return actions[best_idx], actions, probs
-
-

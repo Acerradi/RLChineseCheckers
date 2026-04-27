@@ -6,7 +6,7 @@ import time
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
-
+import json
 
 class ReplayBuffer:
     def __init__(self, capacity: int = 100000):
@@ -34,6 +34,10 @@ if PARENT_DIR not in sys.path:
     sys.path.insert(0, PARENT_DIR)
 
 from policy_template import build_model, save_model, load_model, GraphState, MyPolicy, HeuristicPolicy, axial_dist, NeuralMCTS
+from policies import RandomPolicy
+from collections import defaultdict
+from environment import ChineseCheckersEnv
+import copy
 
 MODEL_HIDDEN_DIM = 128
 MODEL_NUM_LAYERS = 4
@@ -45,7 +49,24 @@ BOOTSTRAP_CHECKPOINT_DIR = os.path.join(BASE_CHECKPOINT_DIR, "bootstrap")
 SELFPLAY_CHECKPOINT_DIR = os.path.join(BASE_CHECKPOINT_DIR, "self_play")
 
 TRAIN_PLAYER_COUNTS = [2, 3, 4, 5, 6]
-TRAIN_PLAYER_COUNT_WEIGHTS = [0.30, 0.20, 0.15, 0.15, 0.20]
+TRAIN_PLAYER_COUNT_WEIGHTS = [0.40, 0.15, 0.15, 0.15, 0.15]
+
+# ============================================================
+# OPPONENT POOL CONFIG
+# ============================================================
+
+# Warm-start opponent mix
+WARMSTART_OPPONENT_WEIGHTS = {"heuristic": 0.50,
+                              "random": 0.30,
+                              "last_checkpoint": 0.20}
+
+# Self-play opponent mix
+SELFPLAY_OPPONENT_WEIGHTS = {"champion": 0.25,
+                             "warmstart_final": 0.15,
+                             "heuristic": 0.15,
+                             "random": 0.10,
+                             "random_checkpoint": 0.15,
+                             "current_model": 0.20}
 
 # ============================================================
 # CHECKPOINT PROMOTION CONFIG
@@ -54,7 +75,7 @@ TRAIN_PLAYER_COUNT_WEIGHTS = [0.30, 0.20, 0.15, 0.15, 0.20]
 PROMOTION_ENABLED = True
 
 PROMOTION_BLOCK_GAMES = 100
-PROMOTION_MATCHES = 20 #20
+PROMOTION_MATCHES = 50
 PROMOTION_PLAYER_COUNTS = [2, 3, 4, 5, 6]
 PROMOTION_MAX_MOVES = 300
 
@@ -72,6 +93,54 @@ TRUNCATED_VALUE = -0.75
 # Champion path
 CHAMPION_NAME = "champion.pt"
 
+# ============================================================
+# HYBRID REJECTION CONFIG
+# ============================================================
+
+# If a challenger is rejected but not clearly broken, continue training it.
+CONTINUE_REJECTED_CHALLENGER = True
+
+# Reset to champion if challenger performs very poorly.
+REJECT_RESET_MIN_WINRATE = 0.35
+
+# Reset to champion if challenger creates too many truncated games.
+REJECT_RESET_MAX_TRUNCATION_RATE = 0.60
+
+# Optional: reset if adjudication/degenerate rates are too high.
+REJECT_RESET_MAX_STALL_ADJ_RATE = 0.35
+REJECT_RESET_MAX_STRANDED_HOME_ADJ_RATE = 0.35
+REJECT_RESET_MAX_REPETITION_ADJ_RATE = 0.35
+
+# ============================================================
+# LEAGUE PROMOTION EVALUATION CONFIG
+# ============================================================
+
+PROMOTION_USE_LEAGUE_EVALUATION = True
+
+# The champion is always guaranteed to occupy at least one opponent seat.
+# These weights are used for the remaining non-challenger seats.
+PROMOTION_LEAGUE_OPPONENT_WEIGHTS = {"champion": 0.35,
+                                     "heuristic": 0.20,
+                                     "random": 0.10,
+                                     "warmstart_final": 0.10,
+                                     "random_checkpoint": 0.25}
+
+# Promotion thresholds based on equal-strength baseline.
+# Equal-strength expected win rate is 1 / num_players.
+PROMOTION_2P_MARGIN = 0.05          # 2p requires 0.55
+PROMOTION_OVERALL_MARGIN = 0.04     # overall must beat equal baseline by 4 percentage points
+
+# Avoid promoting models that collapse in a specific player count.
+PROMOTION_MIN_BY_COUNT_MARGIN = -0.08
+# Example: in 6p, equal is 0.1667. With -0.08 margin, minimum allowed is ~0.0867.
+
+# Rejection/reset thresholds.
+# These should be much looser than promotion thresholds.
+REJECT_RESET_BELOW_EXPECTED_MARGIN = 0.08
+REJECT_RESET_2P_MIN_WINRATE = 0.30
+
+# Policy and training helpers
+# ============================================================
 def build_policy_from_checkpoint(path: str, device: str = "cpu"):
     model = load_model(path, device=device)
     return MyPolicy(model=model, device=device)
@@ -159,6 +228,54 @@ def choose_learner_colour(turn_order, rng: random.Random | None = None) -> str:
     rng = rng or random
     return rng.choice(list(turn_order))
 
+def find_warmstart_final_checkpoint() -> str | None:
+    path = os.path.join(BOOTSTRAP_CHECKPOINT_DIR, "shared_model_final.pt")
+    return path if os.path.exists(path) else None
+
+def build_league_policy(kind: str, *,
+                        champion_ckpt: str,
+                        device: str,
+                        warmstart_final_path: str | None,
+                        random_checkpoint_path: str | None):
+    """
+    Build one evaluation opponent policy.
+
+    The challenger is handled separately. This function only creates opponents.
+    """
+    if kind == "champion":
+        return build_policy_from_checkpoint(champion_ckpt, device=device)
+
+    if kind == "heuristic":
+        return HeuristicPolicy(epsilon=0.0)
+
+    if kind == "random":
+        return build_random_policy()
+
+    if kind == "warmstart_final":
+        if warmstart_final_path is not None and os.path.exists(warmstart_final_path):
+            return build_policy_from_checkpoint(warmstart_final_path, device=device)
+        return HeuristicPolicy(epsilon=0.0)
+
+    if kind == "random_checkpoint":
+        if random_checkpoint_path is not None and os.path.exists(random_checkpoint_path):
+            return build_policy_from_checkpoint(random_checkpoint_path, device=device)
+        return HeuristicPolicy(epsilon=0.0)
+
+    raise ValueError(f"Unknown league opponent kind: {kind}")
+
+def sample_league_opponent_kind(*, has_warmstart_final: bool, has_random_checkpoint: bool) -> str:
+    allowed = ["champion", "heuristic", "random"]
+
+    if has_warmstart_final:
+        allowed.append("warmstart_final")
+
+    if has_random_checkpoint:
+        allowed.append("random_checkpoint")
+
+    return weighted_sample_kind(PROMOTION_LEAGUE_OPPONENT_WEIGHTS, allowed)
+# ============================================================
+
+# Evaluation and promotion helpers
 def evaluate_one_match(champion_ckpt: str,
                        challenger_ckpt: str,
                        num_players: int,
@@ -199,13 +316,13 @@ def evaluate_one_match(champion_ckpt: str,
     my_player = next(p for p in state["players"] if p["colour"] == challenger_colour)
     my_status = my_player["status"]
 
-    quality = action_quality_metrics(
-        history=history,
-        board=env.game.board,
-        focus_colour=challenger_colour,
-    )
+    quality = action_quality_metrics(history=history,
+                                     board=env.game.board,
+                                     focus_colour=challenger_colour)
 
     final_score = scores.get(challenger_colour, {}).get("final_score", 0.0)
+
+    adjudication_reason = get_adjudication_reason_from_state(state)
 
     return {"challenger_colour": challenger_colour,
             "challenger_seat_index": challenger_seat_index,
@@ -213,107 +330,256 @@ def evaluate_one_match(champion_ckpt: str,
             "final_score": final_score,
             "move_count": state.get("move_count", 0),
             "truncated": truncated,
+            "adjudication_reason": adjudication_reason,
+            "adjudication_type": classify_adjudication_reason(adjudication_reason),
+            "home_pieces": extract_state_metric_for_colour(state, "home_pieces", challenger_colour, default=0),
+            "stranded_home_pieces": extract_state_metric_for_colour(state, "stranded_home_pieces", challenger_colour, default=0),
+            "training_progress": extract_state_metric_for_colour(state, "training_progress", challenger_colour, default=0.0),
             "quality": quality}
+
+def evaluate_one_league_match(champion_ckpt: str,
+                              challenger_ckpt: str,
+                              num_players: int,
+                              device: str,
+                              max_moves: int,
+                              seed: int = 0,
+                              challenger_seat_index: int | None = None,
+                              checkpoint_dirs: list[str] | None = None) -> dict:
+    """
+    Evaluate challenger in a mixed-opponent league table.
+
+    Guarantees:
+      - challenger occupies exactly one seat
+      - champion occupies at least one opponent seat
+      - remaining opponent seats are sampled from the league pool
+    """
+    rng = random.Random(seed)
+    random.seed(seed)
+    torch.manual_seed(seed)
+
+    env = ChineseCheckersEnv(num_players=num_players)
+    env.reset()
+
+    challenger_policy = build_policy_from_checkpoint(challenger_ckpt, device=device)
+    champion_policy = build_policy_from_checkpoint(champion_ckpt, device=device)
+
+    turn_order = list(env.turn_order)
+
+    if challenger_seat_index is None:
+        challenger_seat_index = seed % len(turn_order)
+
+    challenger_colour = turn_order[challenger_seat_index]
+    opponent_colours = [c for c in turn_order if c != challenger_colour]
+
+    if not opponent_colours:
+        raise RuntimeError("League evaluation requires at least one opponent")
+
+    # Always force the current champion into one opponent seat.
+    champion_colour = opponent_colours[seed % len(opponent_colours)]
+
+    checkpoint_dirs = checkpoint_dirs or [SELFPLAY_CHECKPOINT_DIR, BOOTSTRAP_CHECKPOINT_DIR]
+
+    warmstart_final_path = find_warmstart_final_checkpoint()
+    random_checkpoint_path = sample_random_checkpoint(checkpoint_dirs,
+                                                      exclude={champion_ckpt, challenger_ckpt})
+
+    has_warmstart_final = warmstart_final_path is not None and os.path.exists(warmstart_final_path)
+    has_random_checkpoint = random_checkpoint_path is not None and os.path.exists(random_checkpoint_path)
+
+    policies_by_colour = {}
+    opponent_kinds_by_colour = {}
+
+    for colour in turn_order:
+        if colour == challenger_colour:
+            policies_by_colour[colour] = challenger_policy
+            opponent_kinds_by_colour[colour] = "challenger"
+
+        elif colour == champion_colour:
+            policies_by_colour[colour] = champion_policy
+            opponent_kinds_by_colour[colour] = "champion_forced"
+
+        else:
+            kind = sample_league_opponent_kind(has_warmstart_final=has_warmstart_final,
+                                               has_random_checkpoint=has_random_checkpoint)
+
+            policies_by_colour[colour] = build_league_policy(kind,
+                                                             champion_ckpt=champion_ckpt,
+                                                             device=device,
+                                                             warmstart_final_path=warmstart_final_path,
+                                                             random_checkpoint_path=random_checkpoint_path)
+            opponent_kinds_by_colour[colour] = kind
+
+    result = env.run_policies(policies_by_colour, max_moves=max_moves)
+
+    state = result["state"]
+    scores = result["scores"]
+    history = result.get("history", [])
+    truncated = bool(result.get("truncated", False))
+
+    my_player = next(p for p in state["players"] if p["colour"] == challenger_colour)
+    my_status = my_player["status"]
+
+    quality = action_quality_metrics(history=history,
+                                     board=env.game.board,
+                                     focus_colour=challenger_colour)
+
+    final_score = scores.get(challenger_colour, {}).get("final_score", 0.0)
+
+    adjudication_reason = get_adjudication_reason_from_state(state) if "get_adjudication_reason_from_state" in globals() else state.get("adjudication_reason")
+
+    return {"challenger_colour": challenger_colour,
+            "challenger_seat_index": challenger_seat_index,
+            "status": my_status,
+            "final_score": final_score,
+            "move_count": state.get("move_count", 0),
+            "truncated": truncated,
+            "adjudication_reason": adjudication_reason,
+            "adjudication_type": classify_adjudication_reason(adjudication_reason) if "classify_adjudication_reason" in globals() else None,
+            "home_pieces": extract_state_metric_for_colour(state, "home_pieces", challenger_colour, default=0) if "extract_state_metric_for_colour" in globals() else 0,
+            "stranded_home_pieces": extract_state_metric_for_colour(state, "stranded_home_pieces", challenger_colour, default=0) if "extract_state_metric_for_colour" in globals() else 0,
+            "training_progress": extract_state_metric_for_colour(state, "training_progress", challenger_colour, default=0.0) if "extract_state_metric_for_colour" in globals() else 0.0,
+            "quality": quality,
+            "opponent_kinds_by_colour": opponent_kinds_by_colour,
+            "forced_champion_colour": champion_colour,
+            "evaluation_mode": "league"}
 
 def evaluate_checkpoint_promotion(champion_ckpt: str,
                                   challenger_ckpt: str,
                                   device: str = "cpu",
                                   matches_per_player_count: int = 20,
                                   player_counts=(2, 3, 4, 5, 6),
-                                  max_moves: int = 300) -> dict:
+                                  max_moves: int = 300,
+                                  use_league_evaluation: bool = PROMOTION_USE_LEAGUE_EVALUATION) -> dict:
     all_results = []
 
     for n_players in player_counts:
         print(f"[promotion] evaluating {n_players}-player matches...", flush=True)
         for i in range(matches_per_player_count):
             seat_index = i % n_players
-            out = evaluate_one_match(champion_ckpt=champion_ckpt,
-                                     challenger_ckpt=challenger_ckpt,
-                                     num_players=n_players,
-                                     device=device,
-                                     max_moves=max_moves,
-                                     seed=10_000 * n_players + i,
-                                     challenger_seat_index=seat_index)
+            if use_league_evaluation:
+                out = evaluate_one_league_match(champion_ckpt=champion_ckpt,
+                                                challenger_ckpt=challenger_ckpt,
+                                                num_players=n_players,
+                                                device=device,
+                                                max_moves=max_moves,
+                                                seed=10_000 * n_players + i,
+                                                challenger_seat_index=seat_index,
+                                                checkpoint_dirs=[SELFPLAY_CHECKPOINT_DIR, BOOTSTRAP_CHECKPOINT_DIR])
+            else:
+                out = evaluate_one_match(champion_ckpt=champion_ckpt,
+                                         challenger_ckpt=challenger_ckpt,
+                                         num_players=n_players,
+                                         device=device,
+                                         max_moves=max_moves,
+                                         seed=10_000 * n_players + i,
+                                         challenger_seat_index=seat_index)
             out["num_players"] = n_players
             all_results.append(out)
 
     # -------------------------
-    # Primary gate: 2-player only
+    # Aggregate summaries
     # -------------------------
+    overall = summarize_promotion_results(all_results)
+    by_player_count = summarize_by_player_count(all_results)
+
     two_player_results = [r for r in all_results if r["num_players"] == 2]
+    two_player_summary = summarize_promotion_results(two_player_results)
 
-    two_wins = sum(r["status"] == "WIN" for r in two_player_results)
-    two_draws = sum(r["status"] == "DRAW" for r in two_player_results)
-    two_losses = sum(r["status"] not in ("WIN", "DRAW") for r in two_player_results)
-    two_win_rate = two_wins / len(two_player_results) if two_player_results else 0.0
+    two_wins = two_player_summary["wins"]
+    two_draws = two_player_summary["draws"]
+    two_losses = two_player_summary["losses"]
+    two_win_rate = two_player_summary["win_rate"]
 
-    # -------------------------
-    # Secondary robustness: 3-6 players
-    # -------------------------
-    multi_results = [r for r in all_results if r["num_players"] >= 3]
+    expected_equal_overall = expected_equal_win_rate_for_eval(player_counts)
+    overall_margin_vs_equal = overall["win_rate"] - expected_equal_overall
 
-    truncations = sum(r["truncated"] for r in all_results)
-    truncation_rate = truncations / len(all_results) if all_results else 0.0
+    for n_players, summary in by_player_count.items():
+        expected_n = expected_equal_win_rate_for_player_count(n_players)
+        summary["expected_equal_win_rate"] = expected_n
+        summary["margin_vs_equal"] = summary["win_rate"] - expected_n
 
-    win_move_counts = [r["move_count"] for r in all_results if r["status"] == "WIN"]
-    avg_win_moves = average_or_zero(win_move_counts)
+    # Keep your current promotion behavior, but add diagnostic gates.
+    two_player_expected = expected_equal_win_rate_for_player_count(2)
+    two_player_required = two_player_expected + PROMOTION_2P_MARGIN
 
-    avg_final_score = average_or_zero([r["final_score"] for r in all_results])
-    avg_progress_score = average_or_zero([r["quality"]["progress_score"] for r in all_results])
-    avg_backward_moves = average_or_zero([r["quality"]["backward_moves"] for r in all_results])
-    avg_undo_moves = average_or_zero([r["quality"]["undo_moves"] for r in all_results])
-    avg_jump_moves = average_or_zero([r["quality"]["jump_moves"] for r in all_results])
+    primary_pass = two_win_rate >= two_player_required
 
-    wins = sum(r["status"] == "WIN" for r in all_results)
-    draws = sum(r["status"] == "DRAW" for r in all_results)
-    losses = sum(r["status"] not in ("WIN", "DRAW") for r in all_results)
+    secondary_pass = (overall["truncation_rate"] <= PROMOTION_MAX_TRUNCATION_RATE
+                      and (overall["avg_win_moves"] == 0.0 or overall["avg_win_moves"] <= PROMOTION_MAX_AVG_WIN_MOVES)
+                      and overall["avg_progress_score"] >= PROMOTION_MIN_PROGRESS_SCORE)
 
-    win_rate = wins / len(all_results) if all_results else 0.0
-    draw_rate = draws / len(all_results) if all_results else 0.0
-    loss_rate = losses / len(all_results) if all_results else 0.0
+    overall_pass = overall["win_rate"] >= (expected_equal_overall + PROMOTION_OVERALL_MARGIN)
+    by_count_pass = True
+    for n_players, summary in by_player_count.items():
+        min_allowed = summary["expected_equal_win_rate"] + PROMOTION_MIN_BY_COUNT_MARGIN
+        if summary["win_rate"] < min_allowed:
+            by_count_pass = False
+            break
+    
+    promoted = primary_pass and overall_pass and by_count_pass and secondary_pass
 
-    primary_pass = two_win_rate >= PROMOTION_MIN_WINRATE
-    secondary_pass = (truncation_rate <= PROMOTION_MAX_TRUNCATION_RATE
-        and (avg_win_moves == 0.0 or avg_win_moves <= PROMOTION_MAX_AVG_WIN_MOVES)
-        and avg_progress_score >= PROMOTION_MIN_PROGRESS_SCORE)
-    promoted = primary_pass and secondary_pass
-
-    return {"promoted": promoted,
+    return {"evaluation_mode": "league" if use_league_evaluation else "champion_only",
+            "promoted": promoted,
             "primary_pass": primary_pass,
             "secondary_pass": secondary_pass,
+            "overall_pass": overall_pass,
+            "by_count_pass": by_count_pass,
+            "two_player_required": two_player_required,
             "two_player_wins": two_wins,
             "two_player_draws": two_draws,
             "two_player_losses": two_losses,
             "two_player_win_rate": two_win_rate,
-            "wins": wins,
-            "draws": draws,
-            "losses": losses,
-            "win_rate": win_rate,
-            "draw_rate": draw_rate,
-            "loss_rate": loss_rate,
-            "truncation_rate": truncation_rate,
-            "avg_win_moves": avg_win_moves,
-            "avg_final_score": avg_final_score,
-            "avg_progress_score": avg_progress_score,
-            "avg_backward_moves": avg_backward_moves,
-            "avg_undo_moves": avg_undo_moves,
-            "avg_jump_moves": avg_jump_moves,
+            "wins": overall["wins"],
+            "draws": overall["draws"],
+            "losses": overall["losses"],
+            "win_rate": overall["win_rate"],
+            "draw_rate": overall["draw_rate"],
+            "loss_rate": overall["loss_rate"],
+            "truncation_rate": overall["truncation_rate"],
+            "avg_win_moves": overall["avg_win_moves"],
+            "avg_final_score": overall["avg_final_score"],
+            "avg_progress_score": overall["avg_progress_score"],
+            "avg_backward_moves": overall["avg_backward_moves"],
+            "avg_undo_moves": overall["avg_undo_moves"],
+            "avg_jump_moves": overall["avg_jump_moves"],
+            "overall": overall,
+            "expected_equal_overall": expected_equal_overall,
+            "overall_margin_vs_equal": overall_margin_vs_equal,
+            "by_player_count": by_player_count,
             "raw_results": all_results}
 
 def print_promotion_report(report: dict) -> None:
     print("\n" + "=" * 80)
     print("CHECKPOINT PROMOTION REPORT")
     print("=" * 80)
+
+    overall = report.get("overall", {})
+
+    print(f"evaluation_mode       : {report.get('evaluation_mode', 'unknown')}")
+    print(f"expected_equal_overall: {report.get('expected_equal_overall', 0.0):.3f}")
+    print(f"overall_margin_equal  : {report.get('overall_margin_vs_equal', 0.0):+.3f}")
+    print(f"overall_pass          : {report.get('overall_pass', False)}")
+    print(f"by_count_pass         : {report.get('by_count_pass', False)}")
+    print(f"2p required           : {report.get('two_player_required', 0.0):.3f}")
+
     print(f"promoted              : {report['promoted']}")
     print(f"primary_pass          : {report['primary_pass']}")
     print(f"secondary_pass        : {report['secondary_pass']}")
-    print(f"2p wins/draws/losses  : {report['two_player_wins']} / {report['two_player_draws']} / {report['two_player_losses']}")
-    print(f"2p win_rate           : {report['two_player_win_rate']:.3f}")
-    print(f"all wins/draws/losses : {report['wins']} / {report['draws']} / {report['losses']}")
-    print(f"all win_rate          : {report['win_rate']:.3f}")
+
+    print("\n--- Overall ---")
+    print(f"wins/draws/losses     : {report['wins']} / {report['draws']} / {report['losses']}")
+    print(f"win_rate              : {report['win_rate']:.3f}")
     print(f"draw_rate             : {report['draw_rate']:.3f}")
     print(f"loss_rate             : {report['loss_rate']:.3f}")
     print(f"truncation_rate       : {report['truncation_rate']:.3f}")
+    print(f"adjudication_rate     : {overall.get('adjudication_rate', 0.0):.3f}")
+    print(f"max_moves_rate        : {overall.get('max_moves_rate', 0.0):.3f}")
+    print(f"stall_adj_rate        : {overall.get('stall_adjudication_rate', 0.0):.3f}")
+    print(f"stranded_home_adj_rate: {overall.get('stranded_home_adjudication_rate', 0.0):.3f}")
+    print(f"repetition_adj_rate   : {overall.get('repetition_adjudication_rate', 0.0):.3f}")
+
+    print("\n--- Move quality ---")
+    print(f"avg_moves             : {overall.get('avg_moves', 0.0):.2f}")
     print(f"avg_win_moves         : {report['avg_win_moves']:.2f}")
     print(f"avg_final_score       : {report['avg_final_score']:.2f}")
     print(f"avg_progress          : {report['avg_progress_score']:.2f}")
@@ -321,8 +587,237 @@ def print_promotion_report(report: dict) -> None:
     print(f"avg_undo              : {report['avg_undo_moves']:.2f}")
     print(f"avg_jump_moves        : {report['avg_jump_moves']:.2f}")
 
+    print("\n--- Home-piece diagnostics ---")
+    print(f"avg_home_pieces       : {overall.get('avg_home_pieces', 0.0):.2f}")
+    print(f"avg_stranded_home     : {overall.get('avg_stranded_home_pieces', 0.0):.2f}")
+    print(f"max_stranded_home     : {overall.get('max_stranded_home_pieces', 0)}")
+
+    print("\n--- By player count ---")
+    by_player_count = report.get("by_player_count", {})
+    for n_players in sorted(by_player_count):
+        s = by_player_count[n_players]
+        print(f"{n_players}p | "
+              f"games={s['games']:3d} "
+              f"W/D/L={s['wins']:3d}/{s['draws']:3d}/{s['losses']:3d} "
+              f"win={s['win_rate']:.3f} "
+              f"exp={s.get('expected_equal_win_rate', 1.0 / n_players):.3f} "
+              f"margin={s.get('margin_vs_equal', s['win_rate'] - 1.0 / n_players):+.3f} "
+              f"trunc={s['truncation_rate']:.3f} "
+              f"adj={s['adjudication_rate']:.3f} "
+              f"stall={s['stall_adjudication_rate']:.3f} "
+              f"stranded_adj={s['stranded_home_adjudication_rate']:.3f} "
+              f"avg_moves={s['avg_moves']:.1f} "
+              f"avg_stranded={s['avg_stranded_home_pieces']:.2f} "
+              f"undo={s['avg_undo_moves']:.2f}")
+
+    print("=" * 80)
+
 def average_or_zero(xs):
     return sum(xs) / len(xs) if xs else 0.0
+
+def expected_equal_win_rate_for_player_count(num_players: int) -> float:
+    """
+    If all players are equally strong, one seat is expected to win 1 / num_players.
+    """
+    return 1.0 / float(num_players)
+
+def expected_equal_win_rate_for_eval(player_counts) -> float:
+    """
+    Expected aggregate win rate if the candidate is equal strength and each
+    player count receives the same number of matches.
+    """
+    counts = list(player_counts)
+    if not counts:
+        return 0.0
+    return sum(expected_equal_win_rate_for_player_count(n) for n in counts) / len(counts)
+
+def league_adjusted_score(win_rate: float, player_counts) -> float:
+    """
+    Positive means above equal-strength expectation.
+    Negative means below equal-strength expectation.
+    """
+    return win_rate - expected_equal_win_rate_for_eval(player_counts)
+
+def safe_rate(count: int, total: int) -> float:
+    return count / total if total > 0 else 0.0
+
+def get_adjudication_reason_from_state(state: dict) -> str | None:
+    """
+    Works with the adjudication fields suggested for core.py.
+    Falls back cleanly if those fields are not present yet.
+    """
+    reason = state.get("adjudication_reason")
+    if reason:
+        return str(reason)
+
+    event = state.get("last_adjudication_event") or {}
+    reason = event.get("reason")
+    return str(reason) if reason else None
+
+def classify_adjudication_reason(reason: str | None) -> str:
+    if not reason:
+        return "none"
+
+    reason_upper = reason.upper()
+
+    if "MAX_MOVES" in reason_upper:
+        return "max_moves"
+    if "STALL" in reason_upper:
+        return "stall"
+    if "STRANDED_HOME" in reason_upper:
+        return "stranded_home"
+    if "REPETITION" in reason_upper:
+        return "repetition"
+
+    return "other"
+
+def extract_state_metric_for_colour(state: dict, metric_name: str, colour: str, default=0):
+    """
+    Handles state fields shaped like:
+        state["stranded_home_pieces"] = {"red": 1, "blue": 0}
+    """
+    metric = state.get(metric_name, {})
+    if isinstance(metric, dict):
+        return metric.get(colour, default)
+    return default
+
+def summarize_promotion_results(results: list[dict]) -> dict:
+    """
+    Summarize promotion/evaluation results for either all games or one player-count slice.
+    """
+    n = len(results)
+    if n == 0:
+        return {
+            "games": 0,
+            "wins": 0,
+            "draws": 0,
+            "losses": 0,
+            "win_rate": 0.0,
+            "draw_rate": 0.0,
+            "loss_rate": 0.0,
+            "truncation_rate": 0.0,
+            "adjudication_rate": 0.0,
+            "max_moves_rate": 0.0,
+            "stall_adjudication_rate": 0.0,
+            "stranded_home_adjudication_rate": 0.0,
+            "repetition_adjudication_rate": 0.0,
+            "avg_moves": 0.0,
+            "avg_win_moves": 0.0,
+            "avg_final_score": 0.0,
+            "avg_progress_score": 0.0,
+            "avg_backward_moves": 0.0,
+            "avg_undo_moves": 0.0,
+            "avg_jump_moves": 0.0,
+            "avg_home_pieces": 0.0,
+            "avg_stranded_home_pieces": 0.0,
+            "max_stranded_home_pieces": 0,
+        }
+
+    wins = sum(r["status"] == "WIN" for r in results)
+    draws = sum(r["status"] == "DRAW" for r in results)
+    losses = sum(r["status"] not in ("WIN", "DRAW") for r in results)
+
+    truncated = sum(bool(r.get("truncated", False)) for r in results)
+
+    reason_classes = [classify_adjudication_reason(r.get("adjudication_reason")) for r in results]
+    adjudicated = sum(cls != "none" for cls in reason_classes)
+    max_moves = sum(cls == "max_moves" for cls in reason_classes)
+    stall = sum(cls == "stall" for cls in reason_classes)
+    stranded_home_adj = sum(cls == "stranded_home" for cls in reason_classes)
+    repetition = sum(cls == "repetition" for cls in reason_classes)
+
+    win_move_counts = [r["move_count"] for r in results if r["status"] == "WIN"]
+
+    stranded_values = [r.get("stranded_home_pieces", 0) for r in results]
+    home_values = [r.get("home_pieces", 0) for r in results]
+
+    return {
+        "games": n,
+        "wins": wins,
+        "draws": draws,
+        "losses": losses,
+        "win_rate": safe_rate(wins, n),
+        "draw_rate": safe_rate(draws, n),
+        "loss_rate": safe_rate(losses, n),
+        "truncation_rate": safe_rate(truncated, n),
+        "adjudication_rate": safe_rate(adjudicated, n),
+        "max_moves_rate": safe_rate(max_moves, n),
+        "stall_adjudication_rate": safe_rate(stall, n),
+        "stranded_home_adjudication_rate": safe_rate(stranded_home_adj, n),
+        "repetition_adjudication_rate": safe_rate(repetition, n),
+        "avg_moves": average_or_zero([r["move_count"] for r in results]),
+        "avg_win_moves": average_or_zero(win_move_counts),
+        "avg_final_score": average_or_zero([r["final_score"] for r in results]),
+        "avg_progress_score": average_or_zero([r["quality"]["progress_score"] for r in results]),
+        "avg_backward_moves": average_or_zero([r["quality"]["backward_moves"] for r in results]),
+        "avg_undo_moves": average_or_zero([r["quality"]["undo_moves"] for r in results]),
+        "avg_jump_moves": average_or_zero([r["quality"]["jump_moves"] for r in results]),
+        "avg_home_pieces": average_or_zero(home_values),
+        "avg_stranded_home_pieces": average_or_zero(stranded_values),
+        "max_stranded_home_pieces": max(stranded_values) if stranded_values else 0,
+    }
+
+def summarize_by_player_count(results: list[dict]) -> dict[int, dict]:
+    out = {}
+    for n_players in sorted(set(r["num_players"] for r in results)):
+        subset = [r for r in results if r["num_players"] == n_players]
+        out[n_players] = summarize_promotion_results(subset)
+    return out
+
+def append_jsonl(path: str, item: dict) -> None:
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "a", encoding="utf-8") as f:
+        f.write(json.dumps(item, default=str) + "\n")
+
+def challenger_collapsed(report: dict) -> tuple[bool, list[str]]:
+    """
+    Decide whether a rejected challenger is bad enough that we should discard it
+    and restart the next block from the champion.
+
+    Returns:
+        collapsed: bool
+        reasons: list[str]
+    """
+    reasons = []
+
+    win_rate = report.get("win_rate", 0.0)
+    truncation_rate = report.get("truncation_rate", 0.0)
+
+    overall = report.get("overall", {}) or {}
+
+    stall_adj_rate = overall.get("stall_adjudication_rate", 0.0)
+    stranded_home_adj_rate = overall.get("stranded_home_adjudication_rate", 0.0)
+    repetition_adj_rate = overall.get("repetition_adjudication_rate", 0.0)
+
+    expected_equal = report.get("expected_equal_overall", 0.0)
+
+    if expected_equal > 0:
+        reset_floor = expected_equal - REJECT_RESET_BELOW_EXPECTED_MARGIN
+    else:
+        reset_floor = REJECT_RESET_MIN_WINRATE
+
+    if win_rate < reset_floor:
+        reasons.append(f"win_rate={win_rate:.3f} < reset_floor={reset_floor:.3f} "
+                       f"(expected_equal={expected_equal:.3f})")
+
+    two_player_win_rate = report.get("two_player_win_rate", 0.0)
+
+    if two_player_win_rate < REJECT_RESET_2P_MIN_WINRATE:
+        reasons.append(f"two_player_win_rate={two_player_win_rate:.3f} < {REJECT_RESET_2P_MIN_WINRATE:.3f}")
+
+    if truncation_rate > REJECT_RESET_MAX_TRUNCATION_RATE:
+        reasons.append(f"truncation_rate={truncation_rate:.3f} > {REJECT_RESET_MAX_TRUNCATION_RATE:.3f}")
+
+    if stall_adj_rate > REJECT_RESET_MAX_STALL_ADJ_RATE:
+        reasons.append(f"stall_adj_rate={stall_adj_rate:.3f} > {REJECT_RESET_MAX_STALL_ADJ_RATE:.3f}")
+
+    if stranded_home_adj_rate > REJECT_RESET_MAX_STRANDED_HOME_ADJ_RATE:
+        reasons.append(f"stranded_home_adj_rate={stranded_home_adj_rate:.3f} > {REJECT_RESET_MAX_STRANDED_HOME_ADJ_RATE:.3f}")
+
+    if repetition_adj_rate > REJECT_RESET_MAX_REPETITION_ADJ_RATE:
+        reasons.append(f"repetition_adj_rate={repetition_adj_rate:.3f} > {REJECT_RESET_MAX_REPETITION_ADJ_RATE:.3f}")
+
+    return len(reasons) > 0, reasons
 
 class TrainableAgent:
     def __init__(self, name: str, device: str = "cpu", lr: float = 1e-3, hidden_dim: int = 128, num_layers: int = 4):
@@ -383,36 +878,55 @@ class TrainableAgent:
 
         return float(batch_loss.item())
 
-    def train_policy_value_batch_soft(self, batch, value_weight: float = 0.1):
+    def train_policy_value_batch_soft(self, batch, value_weight: float = 0.1, return_metrics: bool = False):
         """
         Policy + value training where the policy target is a probability distribution
-        over legal actions (e.g. from MCTS visit counts).
+        over legal actions.
+
+        If return_metrics=True, returns a dict with total/policy/value loss.
+        Otherwise returns total loss as before.
         """
         if not batch:
+            if return_metrics:
+                return {"total_loss": 0.0, "policy_loss": 0.0, "value_loss": 0.0}
             return 0.0
 
         self.model.train()
         self.optimizer.zero_grad()
 
-        losses = []
+        total_losses = []
+        policy_losses = []
+        value_losses = []
+
         for item in batch:
             gs = self._graph_to_device(item["graph_state"])
-            target_policy = item["target_policy"].to(self.device)   # shape [num_actions]
+            target_policy = item["target_policy"].to(self.device)
             target_value = torch.tensor(item["target_value"], dtype=torch.float32, device=self.device)
 
             logits, pred_value = self.model(gs)
 
             log_probs = F.log_softmax(logits, dim=0)
             policy_loss = -(target_policy * log_probs).sum()
-
             value_loss = F.mse_loss(pred_value, target_value)
-            losses.append(policy_loss + value_weight * value_loss)
 
-        batch_loss = torch.stack(losses).mean()
+            total_loss = policy_loss + value_weight * value_loss
+
+            total_losses.append(total_loss)
+            policy_losses.append(policy_loss.detach())
+            value_losses.append(value_loss.detach())
+
+        batch_loss = torch.stack(total_losses).mean()
         batch_loss.backward()
         self.optimizer.step()
 
-        return float(batch_loss.item())
+        metrics = {"total_loss": float(batch_loss.item()),
+                   "policy_loss": float(torch.stack(policy_losses).mean().item()),
+                   "value_loss": float(torch.stack(value_losses).mean().item())}
+
+        if return_metrics:
+            return metrics
+
+        return metrics["total_loss"]
 
     def select_action_with_index(self, observation):
         graph_state = self.graph_from_observation(observation)
@@ -442,10 +956,176 @@ class TrainableAgent:
                    hidden_dim=self.hidden_dim,
                    num_layers=self.num_layers)
 
+# Helpers for checkpoint management and opponent sampling
+# ============================================================
+def collect_checkpoint_candidates(checkpoint_dirs: list[str], include_champion: bool = False) -> list[str]:
+    candidates = []
 
-from collections import defaultdict
-from environment import ChineseCheckersEnv
-import copy
+    for checkpoint_dir in checkpoint_dirs:
+        if not checkpoint_dir or not os.path.isdir(checkpoint_dir):
+            continue
+
+        for name in os.listdir(checkpoint_dir):
+            full = os.path.join(checkpoint_dir, name)
+
+            if name == "champion.pt":
+                if include_champion:
+                    candidates.append(full)
+                continue
+
+            if name == "shared_model_final.pt":
+                candidates.append(full)
+                continue
+
+            if name.startswith("shared_model_") and name.endswith(".pt"):
+                candidates.append(full)
+                continue
+
+            if name.startswith("challenger_block_") and name.endswith(".pt"):
+                candidates.append(full)
+                continue
+
+    # deterministic ordering
+    candidates = sorted(set(candidates))
+    return candidates
+
+def sample_random_checkpoint(checkpoint_dirs: list[str], exclude: set[str] | None = None) -> str | None:
+    exclude = exclude or set()
+    candidates = [p for p in collect_checkpoint_candidates(checkpoint_dirs, include_champion=False) if p not in exclude]
+    if not candidates:
+        return None
+    return random.choice(candidates)
+
+def build_random_policy(seed: int | None = None):
+    try:
+        return RandomPolicy(seed=seed)
+    except TypeError:
+        return RandomPolicy()
+
+def build_checkpoint_policy_if_exists(path: str | None, device: str):
+    if path is None or not os.path.exists(path):
+        return None
+    return build_policy_from_checkpoint(path, device=device)
+
+def weighted_sample_kind(weight_map: dict[str, float], allowed_kinds: list[str]) -> str:
+    kinds = [k for k in allowed_kinds if k in weight_map]
+    weights = [weight_map[k] for k in kinds]
+    total = sum(weights)
+
+    if total <= 0:
+        return random.choice(allowed_kinds)
+
+    weights = [w / total for w in weights]
+    return random.choices(kinds, weights=weights, k=1)[0]
+
+def sample_warmstart_seat_plan(turn_order: list[str], has_last_checkpoint: bool) -> tuple[str, dict[str, str]]:
+    """
+    One tracked learner seat (teacher-controlled for imitation),
+    other seats are sampled from the warm-start opponent pool.
+    """
+    learner_colour = random.choice(list(turn_order))
+
+    allowed = ["heuristic", "random"]
+    if has_last_checkpoint:
+        allowed.append("last_checkpoint")
+
+    seat_plan = {}
+    for colour in turn_order:
+        if colour == learner_colour:
+            seat_plan[colour] = "teacher_seat"
+        else:
+            seat_plan[colour] = weighted_sample_kind(WARMSTART_OPPONENT_WEIGHTS, allowed)
+
+    return learner_colour, seat_plan
+
+def sample_selfplay_seat_plan(turn_order: list[str],
+                              has_champion: bool,
+                              has_warmstart_final: bool,
+                              has_random_checkpoint: bool) -> tuple[str, dict[str, str]]:
+    """
+    One tracked learner seat (MCTS-labeled current model),
+    other seats are sampled from the self-play opponent pool.
+    """
+    learner_colour = random.choice(list(turn_order))
+
+    allowed = ["heuristic", "random", "current_model"]
+
+    if has_champion:
+        allowed.append("champion")
+    if has_warmstart_final:
+        allowed.append("warmstart_final")
+    if has_random_checkpoint:
+        allowed.append("random_checkpoint")
+
+    seat_plan = {}
+    for colour in turn_order:
+        if colour == learner_colour:
+            seat_plan[colour] = "tracked_current"
+        else:
+            seat_plan[colour] = weighted_sample_kind(SELFPLAY_OPPONENT_WEIGHTS, allowed)
+
+    return learner_colour, seat_plan
+
+def build_warmstart_policy_cache(seat_plan: dict[str, str],
+                                 heuristic: HeuristicPolicy,
+                                 last_checkpoint_path: str | None,
+                                 device: str) -> dict[str, MyPolicy | HeuristicPolicy | RandomPolicy]:
+    cache = {}
+
+    last_checkpoint_policy = build_checkpoint_policy_if_exists(last_checkpoint_path, device=device)
+
+    for colour, kind in seat_plan.items():
+        if kind == "teacher_seat":
+            cache[colour] = heuristic
+        elif kind == "heuristic":
+            cache[colour] = heuristic
+        elif kind == "random":
+            cache[colour] = build_random_policy()
+        elif kind == "last_checkpoint":
+            cache[colour] = last_checkpoint_policy if last_checkpoint_policy is not None else heuristic
+        else:
+            raise ValueError(f"Unknown warm-start seat kind: {kind}")
+
+    return cache
+
+def build_selfplay_policy_cache(seat_plan: dict[str, str],
+                                learner: TrainableAgent,
+                                heuristic: HeuristicPolicy,
+                                champion_path: str | None,
+                                warmstart_final_path: str | None,
+                                random_checkpoint_path: str | None,
+                                device: str) -> dict[str, MyPolicy | HeuristicPolicy | RandomPolicy]:
+    cache = {}
+
+    current_model_policy = MyPolicy(model=learner.model,
+                                    device=device,
+                                    hidden_dim=MODEL_HIDDEN_DIM,
+                                    num_layers=MODEL_NUM_LAYERS)
+
+    champion_policy = build_checkpoint_policy_if_exists(champion_path, device=device)
+    warmstart_policy = build_checkpoint_policy_if_exists(warmstart_final_path, device=device)
+    random_checkpoint_policy = build_checkpoint_policy_if_exists(random_checkpoint_path, device=device)
+
+    for colour, kind in seat_plan.items():
+        if kind == "tracked_current":
+            cache[colour] = "tracked_current"   # sentinel; handled explicitly in loop
+        elif kind == "champion":
+            cache[colour] = champion_policy if champion_policy is not None else current_model_policy
+        elif kind == "warmstart_final":
+            cache[colour] = warmstart_policy if warmstart_policy is not None else heuristic
+        elif kind == "heuristic":
+            cache[colour] = heuristic
+        elif kind == "random":
+            cache[colour] = build_random_policy()
+        elif kind == "random_checkpoint":
+            cache[colour] = random_checkpoint_policy if random_checkpoint_policy is not None else heuristic
+        elif kind == "current_model":
+            cache[colour] = current_model_policy
+        else:
+            raise ValueError(f"Unknown self-play seat kind: {kind}")
+
+    return cache
+# ============================================================
 
 """
 MCTS for self play
@@ -470,12 +1150,38 @@ class LocalSearchEnv:
         step_result = self.env.step(colour, action)
         return step_result.reward, step_result.done, step_result.info
 
-def mcts_label_for_observation(learner: TrainableAgent, env: ChineseCheckersEnv, colour: str, num_simulations: int = 16):
+    def value_for_colour(self, colour: str) -> float:
+        """
+        Multiplayer-safe terminal/search value from the requested player's perspective.
+        """
+        game = self.env.game
+        if game is None:
+            return 0.0
+
+        state = game.to_public_state()
+        me = next((p for p in state["players"] if p["colour"] == colour), None)
+
+        if me is not None:
+            if me["status"] == "WIN":
+                return 1.0
+            if me["status"] == "DRAW":
+                return 0.0
+            if me["status"] == "LOSS":
+                return -1.0
+
+        return game.normalized_training_value(colour)
+
+def mcts_label_for_observation(learner: TrainableAgent,
+                               env: ChineseCheckersEnv,
+                               colour: str,
+                               num_simulations: int = 64,
+                               allow_heuristic_fallback: bool = False):
     """
     Run MCTS from the current environment state and return:
-      - chosen action (best action from search)
+      - chosen action
       - graph_state
       - target_policy distribution aligned with graph_state.legal_actions
+      - metadata
     """
     search_env = LocalSearchEnv(copy.deepcopy(env))
 
@@ -486,7 +1192,12 @@ def mcts_label_for_observation(learner: TrainableAgent, env: ChineseCheckersEnv,
 
     try:
         best_action, actions, probs = mcts.search(search_env)
-    except Exception:
+        mcts_failed = False
+
+    except Exception as e:
+        if not allow_heuristic_fallback:
+            raise RuntimeError(f"MCTS failed for colour={colour}, move_count={env.game.move_count if env.game else 'NA'}") from e
+
         obs = env.observe(colour)
         heuristic = HeuristicPolicy(epsilon=0.0)
         best_action = heuristic.select_action(obs)
@@ -498,12 +1209,11 @@ def mcts_label_for_observation(learner: TrainableAgent, env: ChineseCheckersEnv,
                 target_policy[i] = 1.0
                 break
 
-        return best_action, gs, target_policy
+        return best_action, gs, target_policy, {"mcts_failed": True}
 
     obs = env.observe(colour)
     gs = learner.graph_from_observation(obs)
 
-    # Align MCTS action probabilities with graph_state.legal_actions
     action_to_prob = {tuple(a): float(p) for a, p in zip(actions, probs.tolist())}
 
     target_policy = []
@@ -514,26 +1224,29 @@ def mcts_label_for_observation(learner: TrainableAgent, env: ChineseCheckersEnv,
     if target_policy.sum() > 0:
         target_policy = target_policy / target_policy.sum()
     else:
-        # fallback: uniform over legal actions
         target_policy = torch.ones(len(gs.legal_actions), dtype=torch.float32)
         target_policy = target_policy / target_policy.sum()
 
-    return best_action, gs, target_policy
+    return best_action, gs, target_policy, {"mcts_failed": mcts_failed}
 
 def terminal_value_from_result(game, final_state, colour: str, truncated: bool) -> float:
     """
-    For truncated games, use normalized final score instead of a blanket penalty.
+    Multiplayer-safe value target from this colour's perspective.
     """
-    if truncated:
-        return normalized_final_score(game, colour)
-
     me = next(p for p in final_state["players"] if p["colour"] == colour)
+
     if me["status"] == "WIN":
         return 1.0
     if me["status"] == "DRAW":
         return 0.0
-    return -1.0
+    if me["status"] == "LOSS":
+        return -1.0
 
+    # If the game was truncated but not already adjudicated, use clean progress.
+    if truncated:
+        return game.normalized_training_value(colour)
+
+    return -1.0
 
 def policy_examples_from_game(per_colour_examples,
                               game,
@@ -562,8 +1275,7 @@ def bootstrap_imitation(num_games: int = 500,
                         updates_per_cycle: int = 200,
                         num_players: int = 6):
     """
-    Warm-start using heuristic imitation only.
-    Training is triggered by positions collected, not by every Nth game.
+    Warm-start using heuristic imitation on one tracked seat, but with mixed opponents.
     """
     os.makedirs(checkpoint_dir, exist_ok=True)
 
@@ -576,17 +1288,27 @@ def bootstrap_imitation(num_games: int = 500,
     buffer = ReplayBuffer(capacity=100000)
 
     maybe_load_into_learner(learner, start_checkpoint)
-
     positions_since_update = 0
 
     for local_game_idx in range(1, num_games + 1):
         game_idx = start_game_index + local_game_idx
         num_players = random.choices(TRAIN_PLAYER_COUNTS, weights=TRAIN_PLAYER_COUNT_WEIGHTS, k=1)[0]
         env = ChineseCheckersEnv(num_players=num_players)
-
         env.reset()
-        per_colour_examples = defaultdict(list)
 
+        last_checkpoint_path = find_latest_checkpoint(BOOTSTRAP_CHECKPOINT_DIR)
+        has_last_checkpoint = last_checkpoint_path is not None and os.path.exists(last_checkpoint_path)
+        
+        learner_colour, seat_plan = sample_warmstart_seat_plan(turn_order=env.turn_order,
+                                                               has_last_checkpoint=has_last_checkpoint)
+        policy_cache = build_warmstart_policy_cache(seat_plan=seat_plan,
+                                                   heuristic=heuristic,
+                                                   last_checkpoint_path=last_checkpoint_path,
+                                                   device=device)
+        progress_print("bootstrap",
+                       f"starting game={game_idx} num_players={num_players} "
+                       f"learner_colour={learner_colour} seat_plan={seat_plan}")
+        per_colour_examples = defaultdict(list)
         done = False
         game_start = time.time()
 
@@ -594,29 +1316,30 @@ def bootstrap_imitation(num_games: int = 500,
             colour = env.current_turn_colour
             obs = env.observe(colour)
 
-            heuristic_action = heuristic.select_action(obs)
-            gs = learner.graph_from_observation(obs)
+            chosen_action = policy_cache[colour].select_action(obs)
+            if colour == learner_colour:
+                gs = learner.graph_from_observation(obs)
 
-            action_index = None
-            for i, (pin_id, _, to_idx) in enumerate(gs.legal_actions):
-                if (pin_id, to_idx) == heuristic_action:
-                    action_index = i
-                    break
+                action_index = None
+                for i, (pin_id, _, to_idx) in enumerate(gs.legal_actions):
+                    if (pin_id, to_idx) == chosen_action:
+                        action_index = i
+                        break
 
-            if action_index is None:
-                raise RuntimeError("Heuristic action not found in legal action list")
+                if action_index is None:
+                    raise RuntimeError("Heuristic action not found in legal action list")
 
-            per_colour_examples[colour].append({
-                "graph_state": gs,
-                "action_index": action_index,
-            })
+                per_colour_examples[colour].append({"graph_state": gs,
+                                                    "action_index": action_index})
 
-            step_result = env.step(colour, heuristic_action)
+            step_result = env.step(colour, chosen_action)
             done = step_result.done
 
         truncated = env.game.move_count >= max_moves_per_game
         if truncated:
-            print(f"[bootstrap] game={game_idx} hit move cap ({max_moves_per_game})")
+            print(f"[self-play] game={game_idx} hit move cap ({max_moves_per_game})")
+            if env.game.status != "FINISHED":
+                env.game.adjudicate_by_progress("MAX_MOVES_REACHED")
 
         final_state = env.game.to_public_state()
         examples = policy_examples_from_game(per_colour_examples=per_colour_examples,
@@ -676,11 +1399,14 @@ def evaluate_warmstart_topk_match(checkpoint_path: str,
     Measures how often the model's chosen action is among the heuristic's top-k legal moves
     on states generated by heuristic play.
 
-    Returns:{"topk_match_rate": float,"matches": int,"total": int,"k": int,}
+    Uses ADAPTIVE k:
+      - many pieces outside target  -> wider top-k
+      - few pieces outside target   -> narrower top-k
+      - endgame (1-2 outside)       -> exact best move required
     """
-    env = ChineseCheckersEnv(num_players=6)
+    num_players = random.choices(TRAIN_PLAYER_COUNTS, weights=TRAIN_PLAYER_COUNT_WEIGHTS, k=1)[0]
+    env = ChineseCheckersEnv(num_players=num_players)
 
-    # Make heuristic deterministic for evaluation
     heuristic = HeuristicPolicy(epsilon=0.0)
 
     model = load_model(checkpoint_path, device=device)
@@ -688,6 +1414,10 @@ def evaluate_warmstart_topk_match(checkpoint_path: str,
 
     matches = 0
     total = 0
+
+    adaptive_breakdown = {"k1": 0,
+                          "k3": 0,
+                          "k5": 0}
 
     for _ in range(eval_games):
         env.reset()
@@ -701,7 +1431,19 @@ def evaluate_warmstart_topk_match(checkpoint_path: str,
             legal_moves = obs["legal_moves"]
             my_positions = state["pins"][colour]
 
-            # Score every legal move with the heuristic
+            outside_count = heuristic._count_pieces_outside_target(colour, state)
+
+            # Adaptive top-k window
+            if outside_count <= 2:
+                effective_k = 1
+                adaptive_breakdown["k1"] += 1
+            elif outside_count <= 5:
+                effective_k = 3
+                adaptive_breakdown["k3"] += 1
+            else:
+                effective_k = 5
+                adaptive_breakdown["k5"] += 1
+
             scored_actions = []
             for pin_id, to_list in legal_moves.items():
                 pid = int(pin_id)
@@ -715,10 +1457,9 @@ def evaluate_warmstart_topk_match(checkpoint_path: str,
                 done = step_result.done
                 continue
 
-            # Sort descending by heuristic score
             scored_actions.sort(key=lambda x: x[1], reverse=True)
 
-            topk_actions = {action for action, _ in scored_actions[:k]}
+            topk_actions = {action for action, _ in scored_actions[:effective_k]}
             model_action = learner.select_action(obs)
 
             if tuple(model_action) in topk_actions:
@@ -726,7 +1467,6 @@ def evaluate_warmstart_topk_match(checkpoint_path: str,
 
             total += 1
 
-            # Keep state generation heuristic-driven
             step_result = env.step(colour, heuristic.select_action(obs))
             done = step_result.done
 
@@ -734,7 +1474,10 @@ def evaluate_warmstart_topk_match(checkpoint_path: str,
             break
 
     match_rate = matches / total if total > 0 else 0.0
-    return {"topk_match_rate": match_rate,"matches": matches,"total": total,"k": k}
+    return {"topk_match_rate": match_rate,
+            "matches": matches,
+            "total": total,
+            "adaptive_breakdown": adaptive_breakdown}
 
 
 def warmstart_until_good_enough(target_action_match: float = 0.80,
@@ -779,12 +1522,14 @@ def warmstart_until_good_enough(target_action_match: float = 0.80,
             eval_games=20,
             max_positions=1000,
             device=device,
-            k=3,
-        )
+            k=3)
 
         print(f"[warmstart eval] games={total_games} "
-              f"top{action_eval['k']}_match_rate={action_eval['topk_match_rate']:.3f} "
-              f"({action_eval['matches']}/{action_eval['total']})")
+              f"adaptive_match_rate={action_eval['topk_match_rate']:.3f} "
+              f"({action_eval['matches']}/{action_eval['total']}) "
+              f"k1={action_eval['adaptive_breakdown']['k1']} "
+              f"k3={action_eval['adaptive_breakdown']['k3']} "
+              f"k5={action_eval['adaptive_breakdown']['k5']}")
 
         if action_eval["topk_match_rate"] >= target_action_match:
             print("Warm-start threshold reached.")
@@ -804,12 +1549,11 @@ def self_play_refinement(start_checkpoint: str | None = None,
                          start_game_index: int = 0,
                          positions_per_cycle: int = 500,
                          updates_per_cycle: int = 50,
-                         value_weight: float = 0.1,
+                         value_weight: float = 0.5,
                          num_players: int = 6,
-                         mcts_simulations: int = 16):
+                         mcts_simulations: int = 128):
     """
     MCTS-labeled self-play:
-    - learner acts for all seats
     - policy targets come from MCTS visit distributions
     - value targets come from final outcome / normalized truncated score
     """
@@ -819,12 +1563,34 @@ def self_play_refinement(start_checkpoint: str | None = None,
                              device=device,
                              hidden_dim=MODEL_HIDDEN_DIM,
                              num_layers=MODEL_NUM_LAYERS)
+    heuristic = HeuristicPolicy(epsilon=0.0)
     buffer = ReplayBuffer(capacity=200000)
 
     maybe_load_into_learner(learner, start_checkpoint)
 
     positions_since_update = 0
     total_updates_run = 0
+
+    run_metrics = {"games": 0,
+                   "truncated": 0,
+                   "adjudicated": 0,
+                   "stall_adjudicated": 0,
+                   "stranded_home_adjudicated": 0,
+                   "repetition_adjudicated": 0,
+                   "max_moves_adjudicated": 0,
+                   "mcts_calls": 0,
+                   "mcts_failures": 0,
+                   "total_moves": 0,
+                   "total_examples": 0,
+                   "total_stranded_home": 0.0,
+                   "max_stranded_home": 0,
+                   "updates": 0,
+                   "loss_total_sum": 0.0,
+                   "loss_policy_sum": 0.0,
+                   "loss_value_sum": 0.0}
+
+    warmstart_final_path = os.path.join(BOOTSTRAP_CHECKPOINT_DIR, "shared_model_final.pt")
+    champion_path = os.path.join(checkpoint_dir, CHAMPION_NAME)
 
     for local_game_idx in range(1, num_games + 1):
         game_idx = start_game_index + local_game_idx
@@ -835,32 +1601,92 @@ def self_play_refinement(start_checkpoint: str | None = None,
         env = ChineseCheckersEnv(num_players=num_players)
         env.reset()
 
+        random_checkpoint_path = sample_random_checkpoint(checkpoint_dirs=[BOOTSTRAP_CHECKPOINT_DIR, SELFPLAY_CHECKPOINT_DIR],
+                                                          exclude={champion_path} if os.path.exists(champion_path) else set())
+        learner_colour, seat_plan = sample_selfplay_seat_plan(turn_order=env.turn_order,
+                                                              has_champion=os.path.exists(champion_path),
+                                                              has_warmstart_final=os.path.exists(warmstart_final_path),
+                                                              has_random_checkpoint=random_checkpoint_path is not None)
+        policy_cache = build_selfplay_policy_cache(seat_plan=seat_plan,
+                                                   learner=learner,
+                                                   heuristic=heuristic,
+                                                   champion_path=champion_path if os.path.exists(champion_path) else None,
+                                                   warmstart_final_path=warmstart_final_path if os.path.exists(warmstart_final_path) else None,
+                                                   random_checkpoint_path=random_checkpoint_path,
+                                                   device=device)
+        
         progress_print("self-play",
-                       f"starting game={game_idx} num_players={num_players}")
-
+                       f"starting game={game_idx} num_players={num_players} "
+                       f"learner_colour={learner_colour} seat_plan={seat_plan}")
+        
         per_colour_examples = defaultdict(list)
         done = False
         game_start = time.time()
 
+        mcts_calls = 0
+        mcts_failures = 0
+
         while not done and env.game.move_count < max_moves_per_game:
             colour = env.current_turn_colour
+            obs = env.observe(colour)
+            
+            if colour == learner_colour:
+                chosen_action, gs, target_policy, mcts_meta = mcts_label_for_observation(learner=learner,
+                                                                                         env=env,
+                                                                                         colour=colour,
+                                                                                         num_simulations=mcts_simulations,
+                                                                                         allow_heuristic_fallback=False)
 
-            # Search-improved target + chosen action
-            chosen_action, gs, target_policy = mcts_label_for_observation(learner=learner,
-                                                                          env=env,
-                                                                          colour=colour,
-                                                                          num_simulations=mcts_simulations)
-
-            per_colour_examples[colour].append({"graph_state": gs, "target_policy": target_policy})
-
+                per_colour_examples[colour].append({"graph_state": gs,
+                                                    "target_policy": target_policy,
+                                                    "mcts_failed": mcts_meta["mcts_failed"]})
+                mcts_calls += 1
+                mcts_failures += int(mcts_meta["mcts_failed"])
+                per_colour_examples[colour].append({"graph_state": gs,
+                                                    "target_policy": target_policy,
+                                                    "mcts_failed": mcts_meta.get("mcts_failed", False)})
+            else:
+                chosen_action = policy_cache[colour].select_action(obs)
+            
             step_result = env.step(colour, chosen_action)
             done = step_result.done
 
         truncated = env.game.move_count >= max_moves_per_game
         if truncated:
             print(f"[self-play] game={game_idx} hit move cap ({max_moves_per_game})")
+            if env.game.status != "FINISHED":
+                env.game.adjudicate_by_progress("MAX_MOVES_REACHED")
 
         final_state = env.game.to_public_state()
+
+        adjudication_reason = get_adjudication_reason_from_state(final_state)
+        adjudication_type = classify_adjudication_reason(adjudication_reason)
+
+        run_metrics["games"] += 1
+        run_metrics["truncated"] += int(truncated)
+        run_metrics["total_moves"] += env.game.move_count
+
+        if adjudication_type != "none":
+            run_metrics["adjudicated"] += 1
+        if adjudication_type == "stall":
+            run_metrics["stall_adjudicated"] += 1
+        elif adjudication_type == "stranded_home":
+            run_metrics["stranded_home_adjudicated"] += 1
+        elif adjudication_type == "repetition":
+            run_metrics["repetition_adjudicated"] += 1
+        elif adjudication_type == "max_moves":
+            run_metrics["max_moves_adjudicated"] += 1
+
+        stranded_map = final_state.get("stranded_home_pieces", {})
+        if isinstance(stranded_map, dict) and stranded_map:
+            avg_stranded_this_game = sum(stranded_map.values()) / len(stranded_map)
+            max_stranded_this_game = max(stranded_map.values())
+        else:
+            avg_stranded_this_game = 0.0
+            max_stranded_this_game = 0
+
+        run_metrics["total_stranded_home"] += avg_stranded_this_game
+        run_metrics["max_stranded_home"] = max(run_metrics["max_stranded_home"], max_stranded_this_game)
 
         examples = []
         for colour, exs in per_colour_examples.items():
@@ -871,6 +1697,7 @@ def self_play_refinement(start_checkpoint: str | None = None,
 
         for ex in examples:
             buffer.add(ex)
+        run_metrics["total_examples"] += len(examples)
 
         positions_since_update += len(examples)
 
@@ -885,8 +1712,18 @@ def self_play_refinement(start_checkpoint: str | None = None,
             losses = []
             for update_idx in range(updates_per_cycle):
                 batch = buffer.sample(batch_size)
-                loss = learner.train_policy_value_batch_soft(batch, value_weight=value_weight)
+                loss_metrics = learner.train_policy_value_batch_soft(batch,
+                                                                     value_weight=value_weight,
+                                                                     return_metrics=True)
+
+                loss = loss_metrics["total_loss"]
                 losses.append(loss)
+
+                run_metrics["updates"] += 1
+                run_metrics["loss_total_sum"] += loss_metrics["total_loss"]
+                run_metrics["loss_policy_sum"] += loss_metrics["policy_loss"]
+                run_metrics["loss_value_sum"] += loss_metrics["value_loss"]
+
                 updates_this_game += 1
                 total_updates_run += 1
 
@@ -894,7 +1731,9 @@ def self_play_refinement(start_checkpoint: str | None = None,
                     running_avg = sum(losses) / len(losses)
                     progress_print("self-play",
                                    f"update {update_idx+1}/{updates_per_cycle} "
-                                   f"current_loss={loss:.4f} avg_loss={running_avg:.4f}")
+                                   f"current_loss={loss:.4f} avg_loss={running_avg:.4f} "
+                                   f"policy_loss={loss_metrics['policy_loss']:.4f} "
+                                   f"value_loss={loss_metrics['value_loss']:.4f}")
 
             avg_loss = sum(losses) / len(losses)
             positions_since_update = 0
@@ -905,16 +1744,56 @@ def self_play_refinement(start_checkpoint: str | None = None,
         elapsed = time.time() - game_start
         loss_str = f"{avg_loss:.4f}" if avg_loss is not None else "NA"
 
+        mcts_failure_rate_so_far = safe_rate(run_metrics["mcts_failures"], run_metrics["mcts_calls"])
+
         print(f"[self-play] game={game_idx} moves={env.game.move_count} "
               f"examples={len(examples)} buffer={len(buffer)} "
               f"positions_since_update={positions_since_update} "
               f"updates_this_game={updates_this_game} total_updates={total_updates_run} "
-              f"loss={loss_str} truncated={truncated} time={elapsed:.2f}s")
+              f"loss={loss_str} truncated={truncated} "
+              f"adj={adjudication_type} "
+              f"mcts_fail_rate={mcts_failure_rate_so_far:.3f} "
+              f"avg_stranded_this_game={avg_stranded_this_game:.2f} "
+              f"max_stranded_this_game={max_stranded_this_game} "
+              f"time={elapsed:.2f}s")
 
         if game_idx % checkpoint_every == 0:
             ckpt_path = os.path.join(checkpoint_dir, f"shared_model_{game_idx}.pt")
             print(f"[self-play] saving checkpoint: {ckpt_path}")
             learner.save(ckpt_path)
+
+    games = run_metrics["games"]
+    updates = run_metrics["updates"]
+
+    print("\n" + "=" * 80)
+    print("SELF-PLAY RUN SUMMARY")
+    print("=" * 80)
+    print(f"games                      : {games}")
+    print(f"avg_moves                  : {safe_rate(run_metrics['total_moves'], games):.2f}")
+    print(f"total_examples             : {run_metrics['total_examples']}")
+    print(f"avg_examples_per_game      : {safe_rate(run_metrics['total_examples'], games):.2f}")
+    print(f"truncation_rate            : {safe_rate(run_metrics['truncated'], games):.3f}")
+    print(f"adjudication_rate          : {safe_rate(run_metrics['adjudicated'], games):.3f}")
+    print(f"max_moves_adj_rate         : {safe_rate(run_metrics['max_moves_adjudicated'], games):.3f}")
+    print(f"stall_adj_rate             : {safe_rate(run_metrics['stall_adjudicated'], games):.3f}")
+    print(f"stranded_home_adj_rate     : {safe_rate(run_metrics['stranded_home_adjudicated'], games):.3f}")
+    print(f"repetition_adj_rate        : {safe_rate(run_metrics['repetition_adjudicated'], games):.3f}")
+    print(f"mcts_calls                 : {run_metrics['mcts_calls']}")
+    print(f"mcts_failures              : {run_metrics['mcts_failures']}")
+    print(f"mcts_failure_rate          : {safe_rate(run_metrics['mcts_failures'], run_metrics['mcts_calls']):.3f}")
+    print(f"avg_stranded_home          : {safe_rate(run_metrics['total_stranded_home'], games):.3f}")
+    print(f"max_stranded_home          : {run_metrics['max_stranded_home']}")
+
+    if updates > 0:
+        print(f"avg_total_loss             : {run_metrics['loss_total_sum'] / updates:.4f}")
+        print(f"avg_policy_loss            : {run_metrics['loss_policy_sum'] / updates:.4f}")
+        print(f"avg_value_loss             : {run_metrics['loss_value_sum'] / updates:.4f}")
+    else:
+        print("avg_total_loss             : NA")
+        print("avg_policy_loss            : NA")
+        print("avg_value_loss             : NA")
+
+    print("=" * 80)
 
     learner.save(os.path.join(checkpoint_dir, "shared_model_final.pt"))
 
@@ -927,8 +1806,8 @@ def self_play_with_promotion(start_checkpoint: str,
                              max_moves_per_game: int = 300,
                              positions_per_cycle: int = 2500,
                              updates_per_cycle: int = 150,
-                             value_weight: float = 0.1,
-                             mcts_simulations: int = 16):
+                             value_weight: float = 0.5,
+                             mcts_simulations: int = 128):
     os.makedirs(checkpoint_dir, exist_ok=True)
 
     champion_ckpt = os.path.join(checkpoint_dir, CHAMPION_NAME)
@@ -944,7 +1823,8 @@ def self_play_with_promotion(start_checkpoint: str,
     for block_idx in range(1, total_blocks + 1):
         print("\n" + "#" * 80)
         print(f"[promotion] STARTING BLOCK {block_idx}/{total_blocks}")
-        print(f"[promotion] champion = {current_start_ckpt}")
+        print(f"[promotion] actual champion = {champion_ckpt}")
+        print(f"[promotion] training starts from = {current_start_ckpt}")
         print("#" * 80)
 
         challenger_ckpt = os.path.join(checkpoint_dir, f"challenger_block_{block_idx}.pt")
@@ -978,17 +1858,44 @@ def self_play_with_promotion(start_checkpoint: str,
                                                device=device,
                                                matches_per_player_count=PROMOTION_MATCHES,
                                                player_counts=PROMOTION_PLAYER_COUNTS,
-                                               max_moves=PROMOTION_MAX_MOVES)
+                                               max_moves=PROMOTION_MAX_MOVES,
+                                               use_league_evaluation=PROMOTION_USE_LEAGUE_EVALUATION)
         print_promotion_report(report)
 
+        report_path = os.path.join(checkpoint_dir, "promotion_metrics.jsonl")
+        append_jsonl(report_path, {"block_idx": block_idx,
+                                    "champion_ckpt": champion_ckpt,
+                                    "challenger_ckpt": challenger_ckpt,
+                                    "promoted": report["promoted"],
+                                    "overall": report.get("overall", {}),
+                                    "by_player_count": report.get("by_player_count", {})})
+        print(f"[promotion] metrics written to {report_path}")
+
         # Promote or reject
+        # Promote, continue, or reset
         if report["promoted"]:
             shutil.copyfile(challenger_ckpt, champion_ckpt)
             current_start_ckpt = champion_ckpt
-            print(f"[promotion] challenger PROMOTED -> new champion")
+            print("[promotion] challenger PROMOTED -> new champion")
+            print(f"[promotion] next block will start from champion: {current_start_ckpt}")
+
         else:
-            current_start_ckpt = champion_ckpt
-            print(f"[promotion] challenger REJECTED -> keeping old champion")
+            collapsed, collapse_reasons = challenger_collapsed(report)
+
+            if CONTINUE_REJECTED_CHALLENGER and not collapsed:
+                current_start_ckpt = challenger_ckpt
+                print("[promotion] challenger REJECTED narrowly -> continuing challenger training")
+                print(f"[promotion] next block will start from rejected challenger: {current_start_ckpt}")
+
+            else:
+                current_start_ckpt = champion_ckpt
+                print("[promotion] challenger REJECTED badly -> resetting to champion")
+                print(f"[promotion] next block will start from champion: {current_start_ckpt}")
+
+                if collapse_reasons:
+                    print("[promotion] reset reasons:")
+                    for reason in collapse_reasons:
+                        print(f"  - {reason}")
 
         total_games_done += games_per_block
 
@@ -1052,17 +1959,17 @@ def main():
     WARMSTART_BATCH_SIZE = 64
     WARMSTART_CHECKPOINT_EVERY = 25
     WARMSTART_MAX_MOVES = 300
-    WARMSTART_TARGET_ACTION_MATCH = 0.90
+    WARMSTART_TARGET_ACTION_MATCH = 0.95
 
-    SELFPLAY_TOTAL_BLOCKS = 50
-    SELFPLAY_GAMES_PER_BLOCK = 100
+    SELFPLAY_TOTAL_BLOCKS = 100
+    SELFPLAY_GAMES_PER_BLOCK = 50
     SELFPLAY_BATCH_SIZE = 64
     SELFPLAY_MAX_MOVES = 300
     SELFPLAY_POSITIONS_PER_CYCLE = 300
-    SELFPLAY_UPDATES_PER_CYCLE = 30
+    SELFPLAY_UPDATES_PER_CYCLE = 100
     SELFPLAY_VALUE_WEIGHT = 0.05
 
-    MANUAL_START_CHECKPOINT = os.path.join(BOOTSTRAP_CHECKPOINT_DIR, "shared_model_final.pt")
+    MANUAL_START_CHECKPOINT = os.path.join(SELFPLAY_DIR, "champion.pt")
 
     print(f"Architecture name      : {ARCH_NAME}", flush=True)
     print(f"Warm-start directory   : {WARMSTART_DIR}", flush=True)

@@ -26,14 +26,14 @@ from checkers_gui import BoardGUI
 # ============================================================
 # CONFIG
 # ============================================================
-CHECKPOINT_A = "checkpoints/gnn_h64_l3/self_play/shared_model_final.pt"
-CHECKPOINT_B = "checkpoints/gnn_h64_l3/bootstrap/shared_model_final.pt"
- 
+CHECKPOINT_A = "checkpoints/gnn_h128_l4/self_play/champion.pt"
+CHECKPOINT_B = "checkpoints/gnn_h128_l4/bootstrap/shared_model_final.pt"
+
 
 DEVICE = "cpu"
 NUM_PLAYERS = 2
 MAX_MOVES = 300
-MOVE_DELAY_SEC = 1.0
+MOVE_DELAY_SEC = 0.5
 RANDOM_SEED = 42
 
 # If True, shuffle the order of the two player names before env.reset()
@@ -61,7 +61,7 @@ def build_policies(env: ChineseCheckersEnv) -> Dict[str, MyPolicy]:
 
     policy_a = MyPolicy(model=model_a, device=DEVICE)
     policy_b = MyPolicy(model=model_b, device=DEVICE)
-    policy_a = HeuristicPolicy()     # Uncomment to test a checkpoint vs heuristic
+    #policy_a = HeuristicPolicy()     # Uncomment to test a checkpoint vs heuristic
     policy_b = HeuristicPolicy()     # Uncomment to test a checkpoint vs heuristic
 
     policies_by_colour: Dict[str, MyPolicy] = {}
