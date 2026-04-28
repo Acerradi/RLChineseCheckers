@@ -1,0 +1,5 @@
+.claude/
+.vscode/
+checkpoints/
+models/
+modelsV0/
