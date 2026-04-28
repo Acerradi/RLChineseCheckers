@@ -71,16 +71,22 @@ ep=    1000  win=0.312  goal_pieces=4.70/10  ep_len=287  trunc=0.021  steps=1420
 
 Press **Ctrl-C** at any time — the trainer catches the signal, writes a final checkpoint, and exits cleanly.
 
-To resume:
+**Resuming is automatic.** If `rl_agent/checkpoints/latest.pt` exists, the next run picks up from where training stopped:
 
 ```bash
-python -m rl_agent.train --resume rl_agent/checkpoints/latest.pt
+python -m rl_agent.train   # resumes automatically if latest.pt is present
 ```
 
-Or resume from a specific episode:
+To resume from a specific checkpoint instead:
 
 ```bash
 python -m rl_agent.train --resume rl_agent/checkpoints/ep_00005000.pt
+```
+
+To ignore any existing checkpoint and start from scratch:
+
+```bash
+python -m rl_agent.train --fresh
 ```
 
 The log file is appended to (not overwritten) on resume, so the full training history stays in one file.
@@ -106,7 +112,8 @@ Absent player slots are zeroed out automatically.
 |---|---|---|
 | `--n-players` | `2` | Number of players (2 / 3 / 4 / 6) |
 | `--episodes` | `100000` | Total training episodes |
-| `--resume` | — | Checkpoint to resume from |
+| `--resume` | — | Resume from a specific checkpoint (overrides auto-resume) |
+| `--fresh` | off | Start from scratch even if `latest.pt` exists |
 | `--checkpoint-dir` | `rl_agent/checkpoints` | Where to save checkpoints |
 | `--log-file` | `rl_agent/training.log` | Log file path (set to `""` to disable) |
 | `--hidden` | `256` | Hidden layer width |

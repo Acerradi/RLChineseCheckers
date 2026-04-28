@@ -40,7 +40,9 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # Checkpoint / resume
     p.add_argument("--resume", type=str, default=None,
-                   help="Path to a .pt checkpoint to resume from")
+                   help="Path to a specific .pt checkpoint to resume from")
+    p.add_argument("--fresh", action="store_true",
+                   help="Start from scratch even if latest.pt exists")
     p.add_argument("--checkpoint-dir", type=str, default="rl_agent/checkpoints",
                    help="Directory for checkpoints and latest.pt")
     p.add_argument("--save-every", type=int, default=500,
@@ -119,13 +121,10 @@ def main() -> None:
 
     if args.resume:
         trainer.load(args.resume)
-    else:
+    elif not args.fresh:
         auto = os.path.join(args.checkpoint_dir, "latest.pt")
         if os.path.exists(auto):
-            print(
-                f"\nFound an existing checkpoint at {auto}.\n"
-                f"Pass --resume {auto} to continue, or delete it to start fresh.\n"
-            )
+            trainer.load(auto)
 
     trainer.train()
 
