@@ -1,10 +1,23 @@
 """Headless Chinese Checkers environment for RL training.
 
 Imports the existing game code (single system/) without modifying it.
-Supports 2, 3, 4, or 6 players.  Observations are always a fixed-size vector
-of length BOARD_SIZE * MAX_PLAYERS (726) regardless of how many players are
-in the current game — absent player slots are zeroed out.  This lets a single
-trained model play in games of any player count.
+Supports 2, 3, 4, or 6 players.
+
+Observation (fixed size for all player counts)
+-----------------------------------------------
+Float32 vector of length OBS_SIZE = (MAX_PLAYERS + 1) * BOARD_SIZE = 847.
+  Channels 0 .. MAX_PLAYERS-1  : binary piece-occupancy, current player first.
+    Absent player slots are zeroed, so one model works for any player count.
+  Channel MAX_PLAYERS           : binary mask of the current player's goal cells.
+    This tells the agent *where to go* without requiring it to infer the target
+    purely from sparse reward.
+
+Reward
+------
+Dense: (total_hex_distance_before - total_hex_distance_after) * DIST_SCALE
+       per move, plus a small bonus each time a piece enters the goal zone.
+Terminal: +1.0 on winning.  The -1.0 loss penalty is applied retroactively
+          by SelfPlayTrainer after the episode ends.
 """
 import contextlib
 import io
@@ -28,23 +41,28 @@ from checkers_pins import Pin  # noqa: E402
 # ---------------------------------------------------------------------------
 # Constants
 # ---------------------------------------------------------------------------
-BOARD_SIZE = 121        # total cells on the board
+BOARD_SIZE = 121        # total cells on the board (indices 0-120)
 PINS_PER_PLAYER = 10   # pieces per player
 MAX_PLAYERS = 6        # maximum supported player count
-ACTION_DIM = PINS_PER_PLAYER * BOARD_SIZE  # 1210 — (pin_idx, dest_cell) pairs
-OBS_SIZE = BOARD_SIZE * MAX_PLAYERS        # 726 — fixed for all player counts
+ACTION_DIM = PINS_PER_PLAYER * BOARD_SIZE          # 1210
+OBS_SIZE = (MAX_PLAYERS + 1) * BOARD_SIZE          # 847: 6 occupancy + 1 goal zone
+
+# Reward scaling: 0.01 reward per hex unit of distance improvement.
+# Over a perfect game (~100 total hops for 10 pieces) this sums to ~1.0,
+# comparable to the terminal win reward.
+_DIST_SCALE = 0.01
+_GOAL_ENTRY_BONUS = 0.05   # extra reward each time a piece enters the goal zone
 
 COLOUR_ORDER: List[str] = ["red", "lawn green", "yellow", "blue", "gray0", "purple"]
 COLOUR_OPPOSITES: Dict[str, str] = {
-    "red": "blue",       "blue": "red",
+    "red": "blue",        "blue": "red",
     "lawn green": "gray0", "gray0": "lawn green",
-    "yellow": "purple",  "purple": "yellow",
+    "yellow": "purple",   "purple": "yellow",
 }
 
-# Colours assigned by player count
 _COLOURS_FOR_N: Dict[int, List[str]] = {
     2: ["red", "blue"],
-    3: ["red", "lawn green", "yellow"],  # each wins by filling the opposite zone
+    3: ["red", "lawn green", "yellow"],
     4: ["red", "blue", "lawn green", "gray0"],
     6: list(COLOUR_ORDER),
 }
@@ -52,36 +70,19 @@ _COLOURS_FOR_N: Dict[int, List[str]] = {
 
 @contextlib.contextmanager
 def _silent():
-    """Suppress stdout (board construction + placePin prints)."""
     with contextlib.redirect_stdout(io.StringIO()):
         yield
 
 
 # ---------------------------------------------------------------------------
 class ChineseCheckersEnv:
-    """Headless Chinese Checkers environment.
+    """Headless Chinese Checkers environment for RL.
 
     Action encoding
     ---------------
     action = pin_idx * BOARD_SIZE + dest_cell_idx
-      pin_idx   : 0 .. PINS_PER_PLAYER-1  (index into the current player's pin list)
-      dest_cell : 0 .. BOARD_SIZE-1       (board cell index)
-
-    Observation
-    -----------
-    Float32 vector of fixed length OBS_SIZE (BOARD_SIZE * MAX_PLAYERS = 726).
-    The current player's occupancy is always in slots [0 .. BOARD_SIZE-1],
-    followed by each opponent in turn order.  Slots for absent players (when
-    n_players < MAX_PLAYERS) are left as zeros.  The fixed size means one
-    trained model works for any player count up to MAX_PLAYERS.
-
-    Rewards
-    -------
-    +0.1 per piece that newly enters the goal zone on the current move.
-    +1.0 when the current player wins (all pieces in goal zone).
-    The terminal loss penalty (-1.0) is intentionally NOT applied here; the
-    SelfPlayTrainer patches the losing player's last buffer entry after the
-    episode finishes.
+      pin_idx  : 0 .. PINS_PER_PLAYER-1
+      dest_cell: 0 .. BOARD_SIZE-1
     """
 
     def __init__(self, n_players: int = 2) -> None:
@@ -89,13 +90,12 @@ class ChineseCheckersEnv:
             raise ValueError(f"n_players must be one of {sorted(_COLOURS_FOR_N)}, got {n_players}")
         self.n_players = n_players
         self.player_colours: List[str] = _COLOURS_FOR_N[n_players]
-        # Turn order respects the global COLOUR_ORDER
         self.turn_order: List[str] = [c for c in COLOUR_ORDER if c in self.player_colours]
 
-        self.obs_size: int = OBS_SIZE  # always 726 regardless of n_players
+        self.obs_size: int = OBS_SIZE
         self.action_dim: int = ACTION_DIM
 
-        # Mutable game state — initialised by reset()
+        # Game state — populated by reset()
         self.board: Optional[HexBoard] = None
         self.pins: Dict[str, List[Pin]] = {}
         self.turn_idx: int = 0
@@ -103,12 +103,15 @@ class ChineseCheckersEnv:
         self.done: bool = False
         self.winner: Optional[str] = None
 
+        # Episode-constant lookups — populated by reset()
+        self._goal_cell_indices: Dict[str, List[int]] = {}
+        self._goal_distances: Dict[str, np.ndarray] = {}
+
     # ------------------------------------------------------------------
     # Public API
     # ------------------------------------------------------------------
 
     def reset(self) -> np.ndarray:
-        """Start a new game and return the initial observation."""
         with _silent():
             self.board = HexBoard()
             self.pins = {}
@@ -118,51 +121,62 @@ class ChineseCheckersEnv:
                     Pin(self.board, idx, i, colour)
                     for i, idx in enumerate(indices)
                 ]
+
         self.turn_idx = 0
         self.move_count = 0
         self.done = False
         self.winner = None
+
+        # Precompute goal cell indices and hex distances (constant per episode)
+        self._goal_cell_indices = {
+            c: self.board.axial_of_colour(COLOUR_OPPOSITES[c])
+            for c in self.player_colours
+        }
+        self._goal_distances = {
+            c: self._compute_goal_distances(c)
+            for c in self.player_colours
+        }
         return self._observe()
 
     def step(self, action: int) -> Tuple[np.ndarray, float, bool, dict]:
-        """Apply *action* for the current player.
+        """Apply action for the current player.
 
-        Returns (observation, reward, done, info).
-        The observation is from the perspective of the player whose turn it
-        is *after* the move (or the winner's perspective if the game ended).
+        Reward = dense distance improvement + goal-entry bonus [+ 1.0 on win].
         """
         if self.done:
-            raise RuntimeError("Episode is finished; call reset() first.")
+            raise RuntimeError("Episode finished; call reset() first.")
 
         colour = self.current_colour
         pin_idx, dest = self._decode(action)
 
-        before = self._pieces_in_goal(colour)
+        dist_before = self._total_dist_to_goal(colour)
+        goal_before = self._pieces_in_goal(colour)
+
         with _silent():
             ok = self.pins[colour][pin_idx].placePin(dest)
         if not ok:
-            raise ValueError(
-                f"Action {action} (pin {pin_idx} → cell {dest}) is illegal for {colour}."
-            )
+            raise ValueError(f"Illegal action {action} (pin {pin_idx} → cell {dest}) for {colour}.")
 
         self.move_count += 1
-        after = self._pieces_in_goal(colour)
-        progress_reward = (after - before) * 0.1
+        dist_after = self._total_dist_to_goal(colour)
+        goal_after = self._pieces_in_goal(colour)
+
+        # Dense reward: every hex unit of improvement counts
+        reward = (dist_before - dist_after) * _DIST_SCALE
+        reward += (goal_after - goal_before) * _GOAL_ENTRY_BONUS
 
         if self._check_status(colour) == "WIN":
             self.done = True
             self.winner = colour
-            reward = 1.0
+            reward += 1.0
             info = {"result": "win", "colour": colour, "move_count": self.move_count}
         else:
-            reward = progress_reward
             self.turn_idx = (self.turn_idx + 1) % len(self.turn_order)
             info = {"result": "playing", "colour": colour, "move_count": self.move_count}
 
         return self._observe(), reward, self.done, info
 
     def get_legal_actions(self, colour: Optional[str] = None) -> List[int]:
-        """Return every valid action integer for *colour* (or the current player)."""
         if colour is None:
             colour = self.current_colour
         actions: List[int] = []
@@ -173,7 +187,6 @@ class ChineseCheckersEnv:
         return actions
 
     def observe(self, from_perspective: Optional[str] = None) -> np.ndarray:
-        """Return the observation from *from_perspective*'s point of view."""
         return self._observe(from_perspective)
 
     @property
@@ -187,12 +200,19 @@ class ChineseCheckersEnv:
     def _observe(self, perspective: Optional[str] = None) -> np.ndarray:
         if perspective is None:
             perspective = self.current_colour
-        obs = np.zeros(self.obs_size, dtype=np.float32)
-        # Current player first, then others in turn order
+        obs = np.zeros(OBS_SIZE, dtype=np.float32)
+
+        # Channels 0..MAX_PLAYERS-1: piece occupancy (current player first)
         ordered = [perspective] + [c for c in self.turn_order if c != perspective]
         for i, colour in enumerate(ordered):
             for pin in self.pins.get(colour, []):
                 obs[i * BOARD_SIZE + pin.axialindex] = 1.0
+
+        # Channel MAX_PLAYERS: current player's goal zone (static, binary)
+        # Gives the agent explicit geometric knowledge of where to move.
+        for idx in self._goal_cell_indices.get(perspective, []):
+            obs[MAX_PLAYERS * BOARD_SIZE + idx] = 1.0
+
         return obs
 
     def _decode(self, action: int) -> Tuple[int, int]:
@@ -211,3 +231,29 @@ class ChineseCheckersEnv:
             1 for p in self.pins[colour]
             if self.board.cells[p.axialindex].postype == opposite
         )
+
+    def _total_dist_to_goal(self, colour: str) -> float:
+        """Sum of minimum hex distances from each piece to the nearest goal cell."""
+        dists = self._goal_distances[colour]
+        return float(sum(dists[p.axialindex] for p in self.pins[colour]))
+
+    def _compute_goal_distances(self, colour: str) -> np.ndarray:
+        """Precompute min hex distance from every board cell to the goal zone.
+
+        Uses the axial hex distance formula (ignores piece blocking — this is a
+        heuristic for reward shaping, not an exact pathfinding distance).
+        """
+        goal_cells = self._goal_cell_indices[colour]
+        n = len(self.board.cells)
+        dists = np.full(n, np.inf, dtype=np.float32)
+        for idx in range(n):
+            q, r = self.board.cells[idx].q, self.board.cells[idx].r
+            s = -q - r
+            for g in goal_cells:
+                gq = self.board.cells[g].q
+                gr = self.board.cells[g].r
+                gs = -gq - gr
+                d = (abs(q - gq) + abs(r - gr) + abs(s - gs)) / 2
+                if d < dists[idx]:
+                    dists[idx] = d
+        return dists

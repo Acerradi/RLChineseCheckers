@@ -119,10 +119,12 @@ Absent player slots are zeroed out automatically.
 | `--hidden` | `256` | Hidden layer width |
 | `--n-layers` | `4` | Number of residual blocks |
 | `--lr` | `3e-4` | Adam learning rate |
+| `--gamma` | `0.997` | Discount factor |
 | `--update-every` | `512` | Agent steps between PPO gradient updates |
-| `--max-episode-steps` | `500` | Step limit per episode (prevents infinite games early in training) |
-| `--opponent-sync-every` | `1000` | Episodes between syncing the frozen opponent |
+| `--max-episode-steps` | `1000` | Step limit per episode |
+| `--opponent-sync-every` | `500` | Episodes between syncing the frozen opponent |
 | `--save-every` | `500` | Episodes between named checkpoint saves |
+| `--win-rate-threshold` | `0.0` | Stop early when rolling win rate reaches this value (`0.0` = disabled) |
 | `--device` | `auto` | `cpu` / `cuda` / `mps` / `auto` |
 
 Run `python -m rl_agent.train --help` for the full list.
@@ -185,11 +187,22 @@ Policy head  Value head
  log-probs)
 ```
 
-**State encoding** — binary occupancy vector of fixed length `121 × 6 = 726`. The current player's pieces always occupy the first 121 slots (seat-invariant), followed by each opponent in turn order. Slots for players not present in the current game are left as zeros. This fixed size means one model works for any player count.
+**State encoding** — float32 vector of fixed length `121 × 7 = 847`.
+- Channels 0–5 (121 floats each): binary piece-occupancy. Current player first, then opponents in turn order. Absent player slots are zero. Fixed size means one model works for any player count.
+- Channel 6 (121 floats): binary mask of the current player's goal cells. Gives the network explicit geometric knowledge of where to move without relying purely on reward.
 
 **Action encoding** — `pin_index × 121 + destination_cell` (1 210 possible actions). A boolean legal-action mask is applied before softmax so the policy never wastes probability on illegal moves.
 
-**Rewards** — +0.1 per piece that newly enters the goal zone (dense shaping), +1.0 on winning, −1.0 on losing. The loss penalty is applied retroactively to the agent's last buffer entry when the opponent wins on their turn.
+**Rewards** — dense reward every step:
+- `(total hex distance before − total hex distance after) × 0.01` per move (fires on every step, not just at the goal).
+- `+0.05` each time a piece enters the goal zone.
+- `+1.0` on winning, `−1.0` on losing (loss applied retroactively by the trainer).
+
+**Value function** — trained with PPO value-loss clipping to prevent large updates from corrupting the advantage estimates that drive the policy.
+
+**Discount factor** — `gamma = 0.997` (not 0.99). With 1 000-step episodes, `0.99^1000 ≈ 0`, making the terminal win signal invisible to distant states. `0.997^1000 ≈ 0.05`, keeping it meaningful.
+
+**Bootstrap correction** — when an episode is truncated by the step limit (not a natural terminal), the trainer passes the value-function estimate of the final state to GAE instead of 0. Using 0 would systematically under-estimate future rewards for truncated episodes.
 
 **Self-play** — the learner always controls seat 0. All other seats are filled by a periodically-synced frozen copy of the learner (updated every `--opponent-sync-every` episodes).
 

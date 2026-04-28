@@ -35,8 +35,8 @@ def _build_parser() -> argparse.ArgumentParser:
     # Training budget
     p.add_argument("--episodes", type=int, default=100_000,
                    help="Total training episodes")
-    p.add_argument("--max-episode-steps", type=int, default=500,
-                   help="Hard limit on steps per episode (prevents infinite games)")
+    p.add_argument("--max-episode-steps", type=int, default=1_000,
+                   help="Hard limit on steps per episode")
 
     # Checkpoint / resume
     p.add_argument("--resume", type=str, default=None,
@@ -56,19 +56,25 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # PPO hypers
     p.add_argument("--lr", type=float, default=3e-4, help="Adam learning rate")
+    p.add_argument("--gamma", type=float, default=0.997,
+                   help="Discount factor (0.997 keeps the win signal visible at 1000 steps)")
     p.add_argument("--update-every", type=int, default=512,
                    help="Learner-side steps between PPO updates")
     p.add_argument("--clip-eps", type=float, default=0.2, help="PPO clip epsilon")
-    p.add_argument("--entropy-coef", type=float, default=0.01,
-                   help="Entropy bonus coefficient")
+    p.add_argument("--entropy-coef", type=float, default=0.02,
+                   help="Entropy bonus coefficient (higher = more exploration)")
     p.add_argument("--n-epochs", type=int, default=4,
                    help="PPO optimisation epochs per update")
     p.add_argument("--batch-size", type=int, default=512,
                    help="Mini-batch size within each PPO epoch")
 
     # Self-play
-    p.add_argument("--opponent-sync-every", type=int, default=1_000,
+    p.add_argument("--opponent-sync-every", type=int, default=500,
                    help="Episodes between syncing the frozen opponent")
+
+    # Early stopping
+    p.add_argument("--win-rate-threshold", type=float, default=0.0,
+                   help="Stop training when rolling win rate >= this value (0.0 = disabled)")
 
     # Logging
     p.add_argument("--log-every", type=int, default=100,
@@ -99,6 +105,7 @@ def main() -> None:
         hidden=args.hidden,
         n_layers=args.n_layers,
         lr=args.lr,
+        gamma=args.gamma,
         clip_eps=args.clip_eps,
         entropy_coef=args.entropy_coef,
         n_epochs=args.n_epochs,
@@ -114,6 +121,7 @@ def main() -> None:
         log_every=args.log_every,
         checkpoint_dir=args.checkpoint_dir,
         log_file=args.log_file,
+        win_rate_threshold=args.win_rate_threshold,
         ppo=ppo,
     )
 

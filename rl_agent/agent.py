@@ -33,7 +33,7 @@ class PPOConfig:
     n_layers: int = 4
     # Optimisation
     lr: float = 3e-4
-    gamma: float = 0.99
+    gamma: float = 0.997   # higher than 0.99 — with 1000-step episodes 0.99^1000≈0
     gae_lambda: float = 0.95
     clip_eps: float = 0.2
     value_coef: float = 0.5
@@ -130,10 +130,13 @@ class _RolloutBuffer:
         old_lps = torch.tensor(
             [t.log_prob for t in self._data], dtype=torch.float32, device=device
         )
+        old_values = torch.tensor(
+            [t.value for t in self._data], dtype=torch.float32, device=device
+        )
         masks = torch.from_numpy(
             np.stack([t.mask for t in self._data])
         ).to(device)
-        return obs, actions, old_lps, masks
+        return obs, actions, old_lps, old_values, masks
 
 
 # ---------------------------------------------------------------------------
@@ -217,7 +220,7 @@ class PPOAgent:
         # Normalise advantages across the whole batch
         advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
 
-        obs, actions, old_lps, masks = self.buffer.to_tensors(self.device)
+        obs, actions, old_lps, old_values, masks = self.buffer.to_tensors(self.device)
         ret_t = torch.from_numpy(returns).to(self.device)
         adv_t = torch.from_numpy(advantages).to(self.device)
         n = len(self.buffer)
@@ -240,7 +243,15 @@ class PPOAgent:
                     torch.clamp(ratio, 1 - cfg.clip_eps, 1 + cfg.clip_eps) * adv,
                 ).mean()
 
-                v_loss = F.mse_loss(values, ret_t[idx])
+                # Value loss with clipping — prevents the value function from
+                # updating too aggressively in one step, stabilising advantage estimates.
+                v_clipped = old_values[idx] + (values - old_values[idx]).clamp(
+                    -cfg.clip_eps, cfg.clip_eps
+                )
+                v_loss = torch.max(
+                    F.mse_loss(values, ret_t[idx]),
+                    F.mse_loss(v_clipped, ret_t[idx]),
+                )
 
                 # Entropy: 0 * log(0) = 0 because we used -1e9 masking (not -inf)
                 probs = lps.exp()
