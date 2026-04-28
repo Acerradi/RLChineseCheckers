@@ -2,3 +2,4 @@
 models/
 modelsV0/
 __pycache__/
+checkpoints/
