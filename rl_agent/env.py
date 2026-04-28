@@ -26,6 +26,7 @@ import sys
 from typing import Dict, List, Optional, Tuple
 
 import numpy as np
+from scipy.optimize import linear_sum_assignment
 
 # ---------------------------------------------------------------------------
 # Locate and import the existing game implementation
@@ -105,7 +106,7 @@ class ChineseCheckersEnv:
 
         # Episode-constant lookups — populated by reset()
         self._goal_cell_indices: Dict[str, List[int]] = {}
-        self._goal_distances: Dict[str, np.ndarray] = {}
+        self._goal_cell_sets: Dict[str, set] = {}
 
     # ------------------------------------------------------------------
     # Public API
@@ -127,13 +128,13 @@ class ChineseCheckersEnv:
         self.done = False
         self.winner = None
 
-        # Precompute goal cell indices and hex distances (constant per episode)
+        # Precompute goal cell indices (constant per episode)
         self._goal_cell_indices = {
             c: self.board.axial_of_colour(COLOUR_OPPOSITES[c])
             for c in self.player_colours
         }
-        self._goal_distances = {
-            c: self._compute_goal_distances(c)
+        self._goal_cell_sets = {
+            c: set(self._goal_cell_indices[c])
             for c in self.player_colours
         }
         return self._observe()
@@ -233,27 +234,37 @@ class ChineseCheckersEnv:
         )
 
     def _total_dist_to_goal(self, colour: str) -> float:
-        """Sum of minimum hex distances from each piece to the nearest goal cell."""
-        dists = self._goal_distances[colour]
-        return float(sum(dists[p.axialindex] for p in self.pins[colour]))
+        """Minimum-cost bipartite assignment of outside pieces to free goal cells.
 
-    def _compute_goal_distances(self, colour: str) -> np.ndarray:
-        """Precompute min hex distance from every board cell to the goal zone.
-
-        Uses the axial hex distance formula (ignores piece blocking — this is a
-        heuristic for reward shaping, not an exact pathfinding distance).
+        Pieces already in the goal contribute 0 and are excluded from the
+        matching.  Goal cells occupied by own pieces are excluded from the
+        target set.  Using the optimal assignment guarantees that placing any
+        piece into the goal always yields a strictly positive reward — there is
+        no pathological sign-flip when another piece must reroute to a
+        different free cell.
         """
         goal_cells = self._goal_cell_indices[colour]
-        n = len(self.board.cells)
-        dists = np.full(n, np.inf, dtype=np.float32)
-        for idx in range(n):
-            q, r = self.board.cells[idx].q, self.board.cells[idx].r
-            s = -q - r
-            for g in goal_cells:
+        goal_set = self._goal_cell_sets[colour]
+
+        pieces_out = [p for p in self.pins[colour] if p.axialindex not in goal_set]
+        if not pieces_out:
+            return 0.0
+
+        own_in_goal = frozenset(p.axialindex for p in self.pins[colour]
+                                if p.axialindex in goal_set)
+        targets = [g for g in goal_cells if g not in own_in_goal]
+
+        n = len(pieces_out)  # always equals len(targets): both = PINS_PER_PLAYER - k
+        cost = np.empty((n, n), dtype=np.float32)
+        for i, p in enumerate(pieces_out):
+            pq = self.board.cells[p.axialindex].q
+            pr = self.board.cells[p.axialindex].r
+            ps = -pq - pr
+            for j, g in enumerate(targets):
                 gq = self.board.cells[g].q
                 gr = self.board.cells[g].r
                 gs = -gq - gr
-                d = (abs(q - gq) + abs(r - gr) + abs(s - gs)) / 2
-                if d < dists[idx]:
-                    dists[idx] = d
-        return dists
+                cost[i, j] = (abs(pq - gq) + abs(pr - gr) + abs(ps - gs)) / 2
+
+        row_ind, col_ind = linear_sum_assignment(cost)
+        return float(cost[row_ind, col_ind].sum())

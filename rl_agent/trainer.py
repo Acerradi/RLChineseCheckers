@@ -180,8 +180,13 @@ class SelfPlayTrainer:
         # ------------------------------------------------------------------
         winner = self.env.winner
         agent_won = winner == agent_colour
+        # Only penalise a true loss (opponent won).  Truncated episodes (step
+        # limit reached, winner=None) must NOT receive the -1.0 signal — they
+        # are not losses, and treating them as losses floods early training
+        # with spurious negative rewards.
+        agent_lost = winner is not None and not agent_won
 
-        if not agent_won and len(self.agent.buffer) > 0:
+        if agent_lost and len(self.agent.buffer) > 0:
             self.agent.buffer.patch_last_reward(-1.0, done=True)
 
         # ------------------------------------------------------------------
