@@ -10,3 +10,4 @@ multi system single machine minimal/__pycache__/
 __pycache__/
 *.pyc
 *.pyo
+*.log

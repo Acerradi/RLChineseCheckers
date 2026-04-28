@@ -1,8 +1,0 @@
-2026-04-28 13:29:41,406  INFO  Training — episodes=100000  n_players=2  device=cuda  resume_episode=0
-2026-04-28 13:30:22,151  INFO  ep=     100  win=0.000  goal_pieces=0.47/10  ep_len=500  trunc=1.000  steps=25000  loss=-0.0702  p=-0.0432  v=0.0134  ent=3.3779
-2026-04-28 13:31:02,610  INFO  ep=     200  win=0.000  goal_pieces=0.45/10  ep_len=500  trunc=1.000  steps=50000  loss=-0.0753  p=-0.0516  v=0.0162  ent=3.1777
-2026-04-28 13:31:44,035  INFO  ep=     300  win=0.000  goal_pieces=0.47/10  ep_len=500  trunc=1.000  steps=75000  loss=-0.0813  p=-0.0568  v=0.0143  ent=3.1615
-2026-04-28 13:32:24,548  INFO  ep=     400  win=0.000  goal_pieces=0.52/10  ep_len=500  trunc=1.000  steps=100000  loss=-0.0545  p=-0.0309  v=0.0139  ent=3.0636
-2026-04-28 13:32:36,310  INFO  Interrupt received — saving checkpoint and stopping after this episode.
-2026-04-28 13:32:36,539  INFO  Checkpoint → rl_agent/checkpoints/final.pt
-2026-04-28 13:32:36,539  INFO  Training finished at episode 430  steps=107500
