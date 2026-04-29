@@ -40,9 +40,9 @@ class TrainConfig:
     update_every: int = 512
 
     # Hard step limit per episode.  Real games take ~100-200 moves per player;
-    # 1000 total steps gives ~500 agent moves — enough to complete a game once
-    # the agent has learned to make directed progress.
-    max_episode_steps: int = 1_000
+    # 2000 total steps gives ~1000 agent moves — enough headroom to complete
+    # end-game even when pieces need to route around a crowded goal zone.
+    max_episode_steps: int = 2_000
 
     # Episodes between syncing the frozen opponent to the latest learner weights
     opponent_sync_every: int = 500

@@ -164,7 +164,12 @@ class ChineseCheckersEnv:
 
         # Dense reward: every hex unit of improvement counts
         reward = (dist_before - dist_after) * _DIST_SCALE
-        reward += (goal_after - goal_before) * _GOAL_ENTRY_BONUS
+        # Scale goal-entry bonus non-linearly: later pieces are worth more.
+        # Piece k (0-indexed) entering the goal gives bonus * (1 + k/3).
+        # The 10th piece (k=9) gives 4x the bonus of the 1st piece, and
+        # triggers the win reward — this creates a steep gradient near victory.
+        for k in range(goal_before, goal_after):
+            reward += _GOAL_ENTRY_BONUS * (1.0 + k / 3.0)
 
         if self._check_status(colour) == "WIN":
             self.done = True
