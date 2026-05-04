@@ -8,6 +8,11 @@ import random
 import socket
 import time
 from typing import Dict, Any
+import torch
+from harald_files.policy_template import load_model, MyPolicy
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+CHECKPOINT_PATH = r"harald_files/checkpoints/gnn_h128_l4/self_play/champion.pt"
 
 HOST = "127.0.0.1"
 PORT = 50555
@@ -75,6 +80,9 @@ def main():
     game_id = r["game_id"]
     player_id = r["player_id"]
     colour = r["colour"]
+
+    model = load_model(CHECKPOINT_PATH, device=device)
+    policy = MyPolicy(model=model, device=device)
 
     print(f"Joined game {game_id} as {colour}")
 
@@ -174,12 +182,18 @@ def main():
                 time.sleep(0.5)
                 continue
 
-            pid, moves = random.choice(movable)
-            to_index = random.choice(moves)
-
-            delay = random.randint(1, 12)
-            print("Randomized delay:", delay)
-            time.sleep(delay)
+            observation = {"colour": colour,
+                           "state": state,
+                           "legal_moves": legal_moves}
+            
+            try:
+                pid, to_index = policy.select_action(observation)
+            except Exception as e:
+                print("Policy error, falling back to random move: ", e)
+                pid, moves = random.choice(movable)
+                to_index = random.choice(moves)
+            
+            time.sleep(0.2)
             '''-----------------PLAYING LOGIC----------------'''
 
             mv = rpc({

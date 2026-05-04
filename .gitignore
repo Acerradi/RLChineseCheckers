@@ -2,3 +2,5 @@
 models/
 modelsV0/
 __pycache__/
+.venv/
+venv/
