@@ -7,6 +7,7 @@ rl_agent/checkpoints/
 rl_agent/__pycache__/
 single system/__pycache__/
 multi system single machine minimal/__pycache__/
+multi system single machine minimal/games/
 __pycache__/
 *.pyc
 *.pyo

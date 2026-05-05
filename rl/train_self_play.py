@@ -1503,6 +1503,28 @@ def bootstrap_imitation(num_games: int = 500,
     learner.save_full(os.path.join(checkpoint_dir, "shared_model_final.pt"))
 
 
+def evaluate_vs_heuristic_winrate(checkpoint_path: str,
+                                  n_games: int = 30,
+                                  device: str = "cpu") -> float:
+    """Run 2-player games of the checkpoint against HeuristicPolicy and return win rate."""
+    policy = build_policy_from_checkpoint(checkpoint_path, device=device)
+    heuristic = HeuristicPolicy(epsilon=0.0)
+    wins = 0
+    for seed in range(n_games):
+        env = ChineseCheckersEnv(num_players=2)
+        env.reset()
+        colours = list(env.turn_order)
+        # Alternate which seat the learner occupies to avoid colour bias.
+        learner_colour = colours[seed % 2]
+        policies = {c: (policy if c == learner_colour else heuristic) for c in colours}
+        result = env.run_policies(policies, max_moves=400)
+        final = result.get("state", {})
+        for p in final.get("players", []):
+            if p.get("colour") == learner_colour and p.get("status") == "WIN":
+                wins += 1
+    return wins / n_games if n_games > 0 else 0.0
+
+
 def evaluate_warmstart_topk_match(checkpoint_path: str,
                                   eval_games: int = 20,
                                   max_positions: int = 1000,
@@ -1595,6 +1617,7 @@ def evaluate_warmstart_topk_match(checkpoint_path: str,
 
 
 def warmstart_until_good_enough(target_action_match: float = 0.80,
+                                min_win_rate_vs_heuristic: float = 0.20,
                                 bootstrap_chunk_games: int = 50,
                                 max_bootstrap_games: int = 2000,
                                 batch_size: int = 64,
@@ -1604,8 +1627,11 @@ def warmstart_until_good_enough(target_action_match: float = 0.80,
                                 max_moves_per_game: int = 500,
                                 ) -> tuple[str, dict]:
     """
-    Repeatedly runs bootstrap imitation in chunks, evaluating after each chunk,
-    until the model matches the heuristic often enough.
+    Repeatedly runs bootstrap imitation in chunks, evaluating after each chunk.
+    Graduates only when BOTH conditions are met:
+      - action match rate >= target_action_match  (mimicry quality)
+      - 2-player win rate vs heuristic >= min_win_rate_vs_heuristic  (actual winning)
+    This ensures the agent doesn't just copy moves but can actually beat the teacher.
     """
     os.makedirs(checkpoint_dir, exist_ok=True)
 
@@ -1638,16 +1664,26 @@ def warmstart_until_good_enough(target_action_match: float = 0.80,
             device=device,
             k=3)
 
+        win_rate = evaluate_vs_heuristic_winrate(final_ckpt, n_games=30, device=device)
+
         print(f"[warmstart eval] games={total_games} "
-              f"adaptive_match_rate={action_eval['topk_match_rate']:.3f} "
+              f"match_rate={action_eval['topk_match_rate']:.3f} "
               f"({action_eval['matches']}/{action_eval['total']}) "
               f"k1={action_eval['adaptive_breakdown']['k1']} "
               f"k3={action_eval['adaptive_breakdown']['k3']} "
-              f"k5={action_eval['adaptive_breakdown']['k5']}")
+              f"k5={action_eval['adaptive_breakdown']['k5']} "
+              f"win_vs_heuristic={win_rate:.3f} "
+              f"(need match>={target_action_match:.2f} AND win>={min_win_rate_vs_heuristic:.2f})")
 
-        if action_eval["topk_match_rate"] >= target_action_match:
-            print("Warm-start threshold reached.")
+        match_ok = action_eval["topk_match_rate"] >= target_action_match
+        win_ok   = win_rate >= min_win_rate_vs_heuristic
+        if match_ok and win_ok:
+            print("Warm-start threshold reached (match + win).")
             return final_ckpt, action_eval
+        if not match_ok:
+            print(f"  [waiting] action match {action_eval['topk_match_rate']:.3f} < {target_action_match:.2f}")
+        if not win_ok:
+            print(f"  [waiting] win vs heuristic {win_rate:.3f} < {min_win_rate_vs_heuristic:.2f}")
 
     print("Reached maximum bootstrap games without hitting target threshold.")
     return final_ckpt, action_eval
@@ -1666,11 +1702,22 @@ def self_play_refinement(start_checkpoint: str | None = None,
                          value_weight: float = 0.5,
                          num_players: int = 6,
                          mcts_simulations: int = 128,
-                         lr: float = 3e-4):
+                         lr: float = 3e-4,
+                         initial_imitation_weight: float = 0.5,
+                         imitation_decay: float = 0.6,
+                         imitation_eval_every: int = 50,
+                         imitation_win_threshold: float = 0.30):
     """
-    MCTS-labeled self-play:
-    - policy targets come from MCTS visit distributions
-    - value targets come from final outcome / normalized truncated score
+    MCTS-labeled self-play with heuristic imitation annealing.
+
+    Policy targets are a blend of the MCTS visit distribution and the heuristic's
+    preferred action (one-hot):
+        target = (1 - alpha) * mcts_dist + alpha * heuristic_one_hot
+
+    alpha starts at initial_imitation_weight and is multiplied by imitation_decay
+    each time a periodic win-rate evaluation shows the agent beating the heuristic
+    at >= imitation_win_threshold.  This ensures exploration only opens up after the
+    agent has demonstrated it can actually win, not just mimic moves.
     """
     os.makedirs(checkpoint_dir, exist_ok=True)
 
@@ -1683,6 +1730,10 @@ def self_play_refinement(start_checkpoint: str | None = None,
     buffer = ReplayBuffer(capacity=200000)
 
     maybe_load_into_learner(learner, start_checkpoint)
+
+    # Curriculum: heuristic imitation weight, decayed toward 0 as agent starts winning.
+    imitation_alpha = initial_imitation_weight
+    last_imitation_eval_game = 0
 
     positions_since_update = 0
     total_updates_run = 0
@@ -1757,6 +1808,20 @@ def self_play_refinement(start_checkpoint: str | None = None,
                 mcts_calls += 1
                 mcts_failures += int(mcts_meta["mcts_failed"])
 
+                # Curriculum blend: mix heuristic's preferred action into the policy target.
+                # alpha decays toward 0 over time as the agent proves it can win.
+                if imitation_alpha > 1e-4:
+                    h_action = heuristic.select_action(obs)
+                    h_one_hot = torch.zeros(len(gs.legal_actions), dtype=torch.float32)
+                    for i, (pid, _, tidx) in enumerate(gs.legal_actions):
+                        if (pid, tidx) == h_action:
+                            h_one_hot[i] = 1.0
+                            break
+                    target_policy = (1.0 - imitation_alpha) * target_policy + imitation_alpha * h_one_hot
+                    s = target_policy.sum()
+                    if s > 0:
+                        target_policy = target_policy / s
+
                 # Resign if value estimate is very low after minimum moves
                 if (RESIGN_ENABLED
                         and not mcts_meta["mcts_failed"]
@@ -1770,7 +1835,6 @@ def self_play_refinement(start_checkpoint: str | None = None,
                         resigned = True
                         break
 
-                # BUG FIX: was incorrectly appended twice — only append once
                 per_colour_examples[colour].append({"graph_state": gs,
                                                     "target_policy": target_policy,
                                                     "step_reward": 0.0,
@@ -1899,7 +1963,25 @@ def self_play_refinement(start_checkpoint: str | None = None,
                    f"loss={loss_str} trunc={truncated} resign={resigned} "
                    f"adj={adjudication_type} "
                    f"mcts_fail={mcts_failure_rate_so_far:.3f} "
+                   f"imitation_alpha={imitation_alpha:.3f} "
                    f"stranded_avg={avg_stranded_this_game:.1f} t={elapsed:.1f}s")
+
+        # Periodically evaluate win rate vs heuristic and decay imitation weight.
+        if (imitation_alpha > 1e-4
+                and game_idx - last_imitation_eval_game >= imitation_eval_every):
+            ckpt_tmp = os.path.join(checkpoint_dir, "_imitation_eval_tmp.pt")
+            learner.save_full(ckpt_tmp)
+            win_rate = evaluate_vs_heuristic_winrate(ckpt_tmp, n_games=20, device=device)
+            last_imitation_eval_game = game_idx
+            tqdm_write(f"[curriculum] game={game_idx} win_vs_heuristic={win_rate:.3f} "
+                       f"imitation_alpha={imitation_alpha:.3f} "
+                       f"(threshold={imitation_win_threshold:.2f})")
+            if win_rate >= imitation_win_threshold:
+                imitation_alpha *= imitation_decay
+                tqdm_write(f"[curriculum] agent is winning — decaying imitation_alpha "
+                           f"-> {imitation_alpha:.4f}")
+            else:
+                tqdm_write(f"[curriculum] agent not yet winning — keeping imitation_alpha")
 
         if game_idx % checkpoint_every == 0:
             ckpt_path = os.path.join(checkpoint_dir, f"shared_model_{game_idx}.pt")
@@ -1955,7 +2037,11 @@ def self_play_with_promotion(start_checkpoint: str,
                              mcts_simulations: int = 128,
                              lr: float = 3e-4,
                              fresh: bool = False,
-                             patience: int = 10):
+                             patience: int = 10,
+                             initial_imitation_weight: float = 0.5,
+                             imitation_decay: float = 0.6,
+                             imitation_eval_every: int = 50,
+                             imitation_win_threshold: float = 0.30):
     os.makedirs(checkpoint_dir, exist_ok=True)
 
     champion_ckpt = os.path.join(checkpoint_dir, CHAMPION_NAME)
@@ -2012,7 +2098,11 @@ def self_play_with_promotion(start_checkpoint: str,
                              updates_per_cycle=updates_per_cycle,
                              value_weight=value_weight,
                              mcts_simulations=mcts_simulations,
-                             lr=lr)
+                             lr=lr,
+                             initial_imitation_weight=initial_imitation_weight,
+                             imitation_decay=imitation_decay,
+                             imitation_eval_every=imitation_eval_every,
+                             imitation_win_threshold=imitation_win_threshold)
 
         # self_play_refinement writes shared_model_final.pt
         produced_ckpt = os.path.join(checkpoint_dir, "shared_model_final.pt")

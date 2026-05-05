@@ -225,9 +225,40 @@ class GameCore:
         return "PLAYING"
 
     def get_legal_moves_for_colour(self, colour: str) -> Dict[int, List[int]]:
-        """Return a mapping of pin ID to list of legal move indices for the given colour."""
+        """Return a mapping of pin ID to list of legal move indices for the given colour.
+
+        Special rule — final pin forced forward:
+        When exactly one pin remains outside the target zone, that pin's moves are
+        filtered to only those that strictly decrease its axial distance to the nearest
+        goal cell.  This prevents endless back-and-forth oscillation in the endgame.
+        If no forward move exists the filter is lifted so the game never deadlocks.
+        """
         pins = self.pins_by_colour[colour]
-        return {i: list(pin.getPossibleMoves()) for i, pin in enumerate(pins)}
+        target_colour = self.board.colour_opposites[colour]
+        target_cells = [self.board.cells[i] for i in self.board.axial_of_colour(target_colour)]
+
+        outside_goal = [
+            i for i, pin in enumerate(pins)
+            if self.board.cells[pin.axialindex].postype != target_colour
+        ]
+
+        result = {}
+        for i, pin in enumerate(pins):
+            moves = list(pin.getPossibleMoves())
+
+            if len(outside_goal) == 1 and outside_goal[0] == i:
+                curr_dist = min(self._axial_dist(self.board.cells[pin.axialindex], tgt)
+                                for tgt in target_cells)
+                forward = [
+                    m for m in moves
+                    if min(self._axial_dist(self.board.cells[m], tgt) for tgt in target_cells)
+                    < curr_dist
+                ]
+                if forward:
+                    moves = forward
+
+            result[i] = moves
+        return result
 
     def apply_move(self, player_id: str, pin_id: int, to_index: int) -> Dict[str, Any]:
         """Apply a move for a player, returning the result and updated state or error."""
