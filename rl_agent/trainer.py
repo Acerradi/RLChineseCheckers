@@ -26,6 +26,13 @@ from .env import ChineseCheckersEnv
 
 __all__ = ["TrainConfig", "SelfPlayTrainer"]
 
+# Bonus added to the final transition of every non-winning episode, scaled by
+# the number of pieces in goal at that moment.  Makes 2-pin episodes visibly
+# more rewarding than 1-pin episodes even when neither player wins, which
+# prevents the symmetric self-play deadlock where both agents plateau at the
+# same pin count and all episode returns become identical.
+_GOAL_COMPLETION_BONUS = 0.5
+
 
 # ---------------------------------------------------------------------------
 # Configuration
@@ -188,6 +195,15 @@ class SelfPlayTrainer:
 
         if agent_lost and len(self.agent.buffer) > 0:
             self.agent.buffer.patch_last_reward(-1.0, done=True)
+
+        # End-of-episode goal shaping: reward every piece in goal at episode
+        # end.  This makes 2-pin episodes visibly more rewarding than 1-pin
+        # episodes even when nobody wins, breaking the symmetric self-play
+        # deadlock where identical returns produce zero advantage variance.
+        if not agent_won and len(self.agent.buffer) > 0:
+            final_goal = self.env._pieces_in_goal(agent_colour)
+            if final_goal > 0:
+                self.agent.buffer.patch_last_reward(final_goal * _GOAL_COMPLETION_BONUS)
 
         # ------------------------------------------------------------------
         # Bootstrap value for truncated episodes

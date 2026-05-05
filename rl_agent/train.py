@@ -35,7 +35,7 @@ def _build_parser() -> argparse.ArgumentParser:
     # Training budget
     p.add_argument("--episodes", type=int, default=100_000,
                    help="Total training episodes")
-    p.add_argument("--max-episode-steps", type=int, default=1_000,
+    p.add_argument("--max-episode-steps", type=int, default=2_000,
                    help="Hard limit on steps per episode")
 
     # Checkpoint / resume
@@ -56,8 +56,8 @@ def _build_parser() -> argparse.ArgumentParser:
 
     # PPO hypers
     p.add_argument("--lr", type=float, default=3e-4, help="Adam learning rate")
-    p.add_argument("--gamma", type=float, default=0.997,
-                   help="Discount factor (0.997 keeps the win signal visible at 1000 steps)")
+    p.add_argument("--gamma", type=float, default=0.9985,
+                   help="Discount factor (0.9985 keeps the win signal visible at 2000 steps)")
     p.add_argument("--update-every", type=int, default=512,
                    help="Learner-side steps between PPO updates")
     p.add_argument("--clip-eps", type=float, default=0.2, help="PPO clip epsilon")

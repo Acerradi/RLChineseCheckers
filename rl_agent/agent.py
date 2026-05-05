@@ -33,7 +33,7 @@ class PPOConfig:
     n_layers: int = 4
     # Optimisation
     lr: float = 3e-4
-    gamma: float = 0.997   # higher than 0.99 — with 1000-step episodes 0.99^1000≈0
+    gamma: float = 0.9985  # 0.9985^2000 ≈ 0.05 — same effective horizon as 0.997 had for 1000-step episodes
     gae_lambda: float = 0.95
     clip_eps: float = 0.2
     value_coef: float = 0.5
@@ -91,15 +91,12 @@ class _RolloutBuffer:
     def clear(self) -> None:
         self._data.clear()
 
-    def patch_last_reward(self, delta: float, done: bool = True) -> None:
-        """Adjust the reward and done-flag of the most recent transition.
-
-        Used by the trainer to apply the terminal loss penalty after an episode
-        ends on the opponent's move.
-        """
+    def patch_last_reward(self, delta: float, done: Optional[bool] = None) -> None:
+        """Adjust the reward and (optionally) done-flag of the most recent transition."""
         if self._data:
             self._data[-1].reward += delta
-            self._data[-1].done = done
+            if done is not None:
+                self._data[-1].done = done
 
     def compute_gae(
         self, last_value: float, gamma: float, lam: float
@@ -217,10 +214,13 @@ class PPOAgent:
         cfg = self.cfg
         returns, advantages = self.buffer.compute_gae(last_value, cfg.gamma, cfg.gae_lambda)
 
-        # Normalise advantages across the whole batch
-        advantages = (advantages - advantages.mean()) / (advantages.std() + 1e-8)
+        # Normalise advantages — skip if std is near zero (all returns identical,
+        # e.g. stuck in a local optimum): dividing by ~0 would zero everything out.
+        adv_std = advantages.std()
+        if adv_std > 1e-6:
+            advantages = (advantages - advantages.mean()) / adv_std
 
-        obs, actions, old_lps, old_values, masks = self.buffer.to_tensors(self.device)
+        obs, actions, old_lps, _, masks = self.buffer.to_tensors(self.device)
         ret_t = torch.from_numpy(returns).to(self.device)
         adv_t = torch.from_numpy(advantages).to(self.device)
         n = len(self.buffer)
@@ -243,15 +243,7 @@ class PPOAgent:
                     torch.clamp(ratio, 1 - cfg.clip_eps, 1 + cfg.clip_eps) * adv,
                 ).mean()
 
-                # Value loss with clipping — prevents the value function from
-                # updating too aggressively in one step, stabilising advantage estimates.
-                v_clipped = old_values[idx] + (values - old_values[idx]).clamp(
-                    -cfg.clip_eps, cfg.clip_eps
-                )
-                v_loss = torch.max(
-                    F.mse_loss(values, ret_t[idx]),
-                    F.mse_loss(v_clipped, ret_t[idx]),
-                )
+                v_loss = F.mse_loss(values, ret_t[idx])
 
                 # Entropy: 0 * log(0) = 0 because we used -1e9 masking (not -inf)
                 probs = lps.exp()

@@ -52,7 +52,9 @@ OBS_SIZE = (MAX_PLAYERS + 1) * BOARD_SIZE          # 847: 6 occupancy + 1 goal z
 # Over a perfect game (~100 total hops for 10 pieces) this sums to ~1.0,
 # comparable to the terminal win reward.
 _DIST_SCALE = 0.01
-_GOAL_ENTRY_BONUS = 0.05   # extra reward each time a piece enters the goal zone
+_GOAL_ENTRY_BONUS = 0.1    # base reward for the 1st piece entering the goal zone
+_GOAL_ENTRY_BASE  = 2.0    # each subsequent piece gives 2× the previous bonus
+_OSCILLATION_PENALTY = 0.05  # penalty for moving a piece back to where it just was
 
 COLOUR_ORDER: List[str] = ["red", "lawn green", "yellow", "blue", "gray0", "purple"]
 COLOUR_OPPOSITES: Dict[str, str] = {
@@ -128,6 +130,11 @@ class ChineseCheckersEnv:
         self.done = False
         self.winner = None
 
+        # Per-piece previous position for oscillation detection (set in step())
+        self._prev_pos: Dict[str, List[Optional[int]]] = {
+            c: [None] * PINS_PER_PLAYER for c in self.player_colours
+        }
+
         # Precompute goal cell indices (constant per episode)
         self._goal_cell_indices = {
             c: self.board.axial_of_colour(COLOUR_OPPOSITES[c])
@@ -150,6 +157,9 @@ class ChineseCheckersEnv:
         colour = self.current_colour
         pin_idx, dest = self._decode(action)
 
+        prev = self._prev_pos[colour][pin_idx]
+        src = self.pins[colour][pin_idx].axialindex
+
         dist_before = self._total_dist_to_goal(colour)
         goal_before = self._pieces_in_goal(colour)
 
@@ -158,12 +168,16 @@ class ChineseCheckersEnv:
         if not ok:
             raise ValueError(f"Illegal action {action} (pin {pin_idx} → cell {dest}) for {colour}.")
 
+        self._prev_pos[colour][pin_idx] = src
+
         self.move_count += 1
         dist_after = self._total_dist_to_goal(colour)
         goal_after = self._pieces_in_goal(colour)
 
         # Dense reward: every hex unit of improvement counts
         reward = (dist_before - dist_after) * _DIST_SCALE
+        if dest == prev:
+            reward -= _OSCILLATION_PENALTY
         # Scale goal-entry bonus non-linearly: later pieces are worth more.
         # Piece k (0-indexed) entering the goal gives bonus * (1 + k/3).
         # The 10th piece (k=9) gives 4x the bonus of the 1st piece, and
