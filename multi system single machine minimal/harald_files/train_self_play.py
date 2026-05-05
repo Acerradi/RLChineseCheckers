@@ -2219,7 +2219,15 @@ def main():
 
     print(f"Using start checkpoint: {start_checkpoint}", flush=True)
     if not os.path.exists(start_checkpoint):
-        raise FileNotFoundError(f"Start checkpoint not found: {start_checkpoint}")
+        if args.start_checkpoint:
+            # User explicitly provided a path — fail clearly
+            raise FileNotFoundError(f"Start checkpoint not found: {start_checkpoint}")
+        # First-ever run: create a randomly-initialised model so training can start
+        os.makedirs(os.path.dirname(start_checkpoint), exist_ok=True)
+        initial_agent = TrainableAgent(name="initial", device=DEVICE,
+                                       hidden_dim=MODEL_HIDDEN_DIM, num_layers=MODEL_NUM_LAYERS)
+        initial_agent.save_full(start_checkpoint)
+        print(f"[train] No checkpoint found — created random initial model at {start_checkpoint}", flush=True)
 
     self_play_with_promotion(start_checkpoint=start_checkpoint,
                              total_blocks=args.blocks,
