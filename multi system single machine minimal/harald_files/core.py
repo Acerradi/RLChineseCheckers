@@ -50,7 +50,8 @@ class GameCore:
              stall_limit_per_colour: int = 24,
              hard_stall_limit_per_colour: int = 48,
              stuck_home_grace_moves: int = 35,
-             max_stranded_home_turns: int = 20):
+             max_stranded_home_turns: int = 20,
+             no_goal_progress_limit: int = 200):
         
         self.game_id = game_id or str(uuid.uuid4())
         self.board = HexBoard()
@@ -87,10 +88,13 @@ class GameCore:
         self.hard_stall_limit_per_colour = hard_stall_limit_per_colour
         self.stuck_home_grace_moves = stuck_home_grace_moves
         self.max_stranded_home_turns = max_stranded_home_turns
+        self.no_goal_progress_limit = no_goal_progress_limit
 
         self.state_repetition_counts: Dict[tuple, int] = {}
         self.colour_stall_counts: Dict[str, int] = {}
         self.colour_stranded_home_turns: Dict[str, int] = {}
+        self.colour_pins_in_goal: Dict[str, int] = {}
+        self.colour_moves_without_goal_progress: Dict[str, int] = {}
         self.adjudication_reason: Optional[str] = None
         self.last_adjudication_event: Optional[Dict[str, Any]] = None
 
@@ -451,11 +455,15 @@ class GameCore:
         # - distance matters continuously
         # - home pieces are bad
         # - stranded home pieces are very bad
+        # - quadratic endgame bonus gives a stronger gradient when almost done
+        n_pins = len(pins) or 1
+        endgame_bonus = 10.0 * (pins_in_goal / n_pins) ** 2
         return (
             pins_in_goal * 30.0
             - float(total_dist)
             - home_pieces * 8.0
             - stranded_home * 30.0
+            + endgame_bonus
         )
 
     def normalized_training_value(self, colour: str) -> float:
@@ -602,6 +610,26 @@ class GameCore:
             event["stall_penalty"] = -0.05 * (stall_count - self.stall_limit_per_colour + 1)
 
         # -------------------------
+        # Non-resettable goal-progress counter
+        # Unlike the stall counter this never resets on micro-progress,
+        # so a model cannot avoid adjudication by occasionally nudging a piece.
+        # -------------------------
+        target_colour_for_np = self.board.colour_opposites[moved_colour]
+        pins_in_goal_now = sum(
+            1 for p in self.pins_by_colour[moved_colour]
+            if getattr(self.board.cells[p.axialindex], "postype", "board") == target_colour_for_np
+        )
+        prev_pins_in_goal = self.colour_pins_in_goal.get(moved_colour, 0)
+        if pins_in_goal_now > prev_pins_in_goal:
+            self.colour_moves_without_goal_progress[moved_colour] = 0
+        else:
+            self.colour_moves_without_goal_progress[moved_colour] = (
+                self.colour_moves_without_goal_progress.get(moved_colour, 0) + 1
+            )
+        self.colour_pins_in_goal[moved_colour] = pins_in_goal_now
+        event["moves_without_goal_progress"] = self.colour_moves_without_goal_progress[moved_colour]
+
+        # -------------------------
         # Stranded home-piece detection
         # -------------------------
         stranded = event["stranded_home_pieces"]
@@ -633,7 +661,6 @@ class GameCore:
         # -------------------------
         if (
             stall_count >= self.hard_stall_limit_per_colour
-            and not was_forced
         ):
             event["adjudicated"] = True
             event["reason"] = f"STALL_LIMIT_REACHED:{moved_colour}"
@@ -645,6 +672,13 @@ class GameCore:
         ):
             event["adjudicated"] = True
             event["reason"] = f"STRANDED_HOME_LIMIT_REACHED:{moved_colour}"
+            self.adjudicate_by_progress(event["reason"])
+
+        elif (
+            self.colour_moves_without_goal_progress.get(moved_colour, 0) >= self.no_goal_progress_limit
+        ):
+            event["adjudicated"] = True
+            event["reason"] = f"NO_GOAL_PROGRESS:{moved_colour}"
             self.adjudicate_by_progress(event["reason"])
 
         self.last_adjudication_event = event

@@ -5,11 +5,19 @@ import sys
 import time
 import pickle
 import shutil
+import signal
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
 import json
 import numpy as np
+
+_stop_requested: bool = False
+
+def _request_stop(signum, frame) -> None:
+    global _stop_requested
+    _stop_requested = True
+    print("\n[train] Interrupt received — finishing current block then saving.", flush=True)
 
 try:
     from tqdm import tqdm as _tqdm
@@ -355,7 +363,7 @@ def evaluate_one_match(champion_ckpt: str,
     random.seed(seed)
     torch.manual_seed(seed)
 
-    env = ChineseCheckersEnv(num_players=num_players)
+    env = ChineseCheckersEnv(num_players=num_players, per_move_penalty=-0.002)
     env.reset()
 
     champion_policy = build_policy_from_checkpoint(champion_ckpt, device=device)
@@ -425,7 +433,7 @@ def evaluate_one_league_match(champion_ckpt: str,
     random.seed(seed)
     torch.manual_seed(seed)
 
-    env = ChineseCheckersEnv(num_players=num_players)
+    env = ChineseCheckersEnv(num_players=num_players, per_move_penalty=-0.002)
     env.reset()
 
     challenger_policy = build_policy_from_checkpoint(challenger_ckpt, device=device)
@@ -897,7 +905,10 @@ class TrainableAgent:
         self.model = build_model(device=device,
                                  hidden_dim=hidden_dim,
                                  num_layers=num_layers)
-        self.optimizer = optim.Adam(self.model.parameters(), lr=lr)
+        self.optimizer = optim.Adam(self.model.parameters(), lr=lr, weight_decay=1e-4)
+        # Reduce LR by half when validation loss plateaus for 500 updates
+        self.lr_scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(
+            self.optimizer, mode='min', factor=0.5, patience=500, min_lr=1e-5)
         self.policy = MyPolicy(model=self.model,
                                device=device,
                                hidden_dim=hidden_dim,
@@ -942,6 +953,7 @@ class TrainableAgent:
 
         batch_loss = torch.stack(losses).mean()
         batch_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
         self.optimizer.step()
 
         return float(batch_loss.item())
@@ -972,6 +984,8 @@ class TrainableAgent:
         policy_losses = []
         value_losses = []
 
+        value_td_errors = []  # true |pred - target| for PER priority updates
+
         for item in batch:
             gs = self._graph_to_device(item["graph_state"])
             target_policy = item["target_policy"].to(self.device)
@@ -980,7 +994,10 @@ class TrainableAgent:
             logits, pred_value = self.model(gs)
 
             log_probs = F.log_softmax(logits, dim=0)
-            policy_loss = -(target_policy * log_probs).sum()
+            probs = log_probs.exp()
+            # Entropy bonus discourages premature policy collapse
+            entropy = -(probs * log_probs).sum()
+            policy_loss = -(target_policy * log_probs).sum() - 0.01 * entropy
             value_loss = F.mse_loss(pred_value, target_value)
 
             total_loss = policy_loss + value_weight * value_loss
@@ -988,17 +1005,22 @@ class TrainableAgent:
             total_losses.append(total_loss)
             policy_losses.append(policy_loss.detach())
             value_losses.append(value_loss.detach())
+            # True TD error: how wrong the value head was, used for PER priorities
+            value_td_errors.append(abs(float(pred_value.detach().item()) - float(target_value.item())))
 
         batch_loss = torch.stack(total_losses).mean()
         batch_loss.backward()
+        torch.nn.utils.clip_grad_norm_(self.model.parameters(), 1.0)
         self.optimizer.step()
+        self.lr_scheduler.step(batch_loss.item())
 
         metrics = {"total_loss": float(batch_loss.item()),
                    "policy_loss": float(torch.stack(policy_losses).mean().item()),
-                   "value_loss": float(torch.stack(value_losses).mean().item())}
+                   "value_loss": float(torch.stack(value_losses).mean().item()),
+                   "lr": float(self.optimizer.param_groups[0]["lr"])}
 
         if return_per_sample_errors:
-            metrics["per_sample_errors"] = [float(tl.detach().item()) for tl in total_losses]
+            metrics["per_sample_errors"] = value_td_errors
 
         if return_metrics:
             return metrics
@@ -1036,7 +1058,8 @@ class TrainableAgent:
     def save_full(self, path: str):
         """Save model weights + optimizer state for complete resume."""
         self.save(path)
-        train_state = {"optimizer": self.optimizer.state_dict()}
+        train_state = {"optimizer": self.optimizer.state_dict(),
+                       "lr_scheduler": self.lr_scheduler.state_dict()}
         torch.save(train_state, path + ".train")
 
     def load_full(self, path: str):
@@ -1047,6 +1070,8 @@ class TrainableAgent:
             try:
                 train_state = torch.load(opt_path, map_location=self.device)
                 self.optimizer.load_state_dict(train_state["optimizer"])
+                if "lr_scheduler" in train_state:
+                    self.lr_scheduler.load_state_dict(train_state["lr_scheduler"])
             except Exception as e:
                 print(f"[resume] could not load optimizer state from {opt_path}: {e}", flush=True)
 
@@ -1321,6 +1346,16 @@ def mcts_label_for_observation(learner: TrainableAgent,
         target_policy = torch.ones(len(gs.legal_actions), dtype=torch.float32)
         target_policy = target_policy / target_policy.sum()
 
+    # Dirichlet noise: encourages the model to assign non-zero probability to
+    # all legal moves, preventing premature policy collapse.
+    # alpha=0.3 and eps=0.25 follow the AlphaZero paper defaults.
+    if len(target_policy) > 1:
+        noise = torch.from_numpy(
+            np.random.dirichlet([0.3] * len(target_policy))
+        ).float()
+        target_policy = 0.75 * target_policy + 0.25 * noise
+        target_policy = target_policy / target_policy.sum()
+
     return best_action, gs, target_policy, {"mcts_failed": mcts_failed}
 
 def terminal_value_from_result(game, final_state, colour: str, truncated: bool) -> float:
@@ -1388,7 +1423,7 @@ def bootstrap_imitation(num_games: int = 500,
     for local_game_idx in pbar:
         game_idx = start_game_index + local_game_idx
         num_players = random.choices(TRAIN_PLAYER_COUNTS, weights=TRAIN_PLAYER_COUNT_WEIGHTS, k=1)[0]
-        env = ChineseCheckersEnv(num_players=num_players)
+        env = ChineseCheckersEnv(num_players=num_players, per_move_penalty=-0.002)
         env.reset()
 
         last_checkpoint_path = find_latest_checkpoint(BOOTSTRAP_CHECKPOINT_DIR)
@@ -1488,7 +1523,7 @@ def evaluate_warmstart_topk_match(checkpoint_path: str,
       - endgame (1-2 outside)       -> exact best move required
     """
     num_players = random.choices(TRAIN_PLAYER_COUNTS, weights=TRAIN_PLAYER_COUNT_WEIGHTS, k=1)[0]
-    env = ChineseCheckersEnv(num_players=num_players)
+    env = ChineseCheckersEnv(num_players=num_players, per_move_penalty=-0.002)
 
     heuristic = HeuristicPolicy(epsilon=0.0)
 
@@ -1685,7 +1720,7 @@ def self_play_refinement(start_checkpoint: str | None = None,
                                      weights=TRAIN_PLAYER_COUNT_WEIGHTS,
                                      k=1)[0]
 
-        env = ChineseCheckersEnv(num_players=num_players)
+        env = ChineseCheckersEnv(num_players=num_players, per_move_penalty=-0.002)
         env.reset()
 
         random_checkpoint_path = sample_random_checkpoint(checkpoint_dirs=[BOOTSTRAP_CHECKPOINT_DIR, SELFPLAY_CHECKPOINT_DIR],
@@ -1921,7 +1956,9 @@ def self_play_with_promotion(start_checkpoint: str,
                              updates_per_cycle: int = 150,
                              value_weight: float = 0.5,
                              mcts_simulations: int = 128,
-                             lr: float = 3e-4):
+                             lr: float = 3e-4,
+                             fresh: bool = False,
+                             patience: int = 10):
     os.makedirs(checkpoint_dir, exist_ok=True)
 
     champion_ckpt = os.path.join(checkpoint_dir, CHAMPION_NAME)
@@ -1930,11 +1967,12 @@ def self_play_with_promotion(start_checkpoint: str,
         print(f"[promotion] initialized champion from {start_checkpoint}")
 
     # Resume from persisted block state if available
-    block_state = load_block_state(checkpoint_dir)
+    block_state = None if fresh else load_block_state(checkpoint_dir)
     if block_state is not None:
         resume_block = block_state["block_idx"] + 1
         total_games_done = block_state["total_games_done"]
         current_start_ckpt = block_state["current_start_ckpt"]
+        blocks_without_promotion = block_state.get("blocks_without_promotion", 0)
         if not os.path.exists(current_start_ckpt):
             print(f"[promotion] resume ckpt missing ({current_start_ckpt}), falling back to champion")
             current_start_ckpt = champion_ckpt
@@ -1943,8 +1981,16 @@ def self_play_with_promotion(start_checkpoint: str,
         resume_block = 1
         total_games_done = 0
         current_start_ckpt = champion_ckpt
+        blocks_without_promotion = 0
 
-    for block_idx in range(resume_block, total_blocks + 1):
+    global _stop_requested
+    _stop_requested = False
+    old_sigint = signal.signal(signal.SIGINT, _request_stop)
+    try:
+      for block_idx in range(resume_block, total_blocks + 1):
+        if _stop_requested:
+            print("[train] Stop requested — exiting after last completed block.", flush=True)
+            break
         print("\n" + "#" * 80)
         print(f"[promotion] STARTING BLOCK {block_idx}/{total_blocks}")
         print(f"[promotion] actual champion = {champion_ckpt}")
@@ -1999,10 +2045,12 @@ def self_play_with_promotion(start_checkpoint: str,
         if report["promoted"]:
             copy_checkpoint_with_optimizer(challenger_ckpt, champion_ckpt)
             current_start_ckpt = champion_ckpt
+            blocks_without_promotion = 0
             print("[promotion] challenger PROMOTED -> new champion")
             print(f"[promotion] next block will start from champion: {current_start_ckpt}")
 
         else:
+            blocks_without_promotion += 1
             collapsed, collapse_reasons = challenger_collapsed(report)
 
             if CONTINUE_REJECTED_CHALLENGER and not collapsed:
@@ -2020,14 +2068,27 @@ def self_play_with_promotion(start_checkpoint: str,
                     for reason in collapse_reasons:
                         print(f"  - {reason}")
 
+            if patience > 0 and blocks_without_promotion >= patience:
+                print(f"\n[promotion] No promotion for {blocks_without_promotion} consecutive blocks "
+                      f"(patience={patience}) — stopping early.", flush=True)
+                total_games_done += games_per_block
+                save_block_state(checkpoint_dir, block_idx=block_idx,
+                                 total_games_done=total_games_done,
+                                 current_start_ckpt=current_start_ckpt,
+                                 blocks_without_promotion=blocks_without_promotion)
+                break
+
         total_games_done += games_per_block
 
         # Persist block state so training can resume after a crash
         save_block_state(checkpoint_dir,
                          block_idx=block_idx,
                          total_games_done=total_games_done,
-                         current_start_ckpt=current_start_ckpt)
+                         current_start_ckpt=current_start_ckpt,
+                         blocks_without_promotion=blocks_without_promotion)
 
+    finally:
+        signal.signal(signal.SIGINT, old_sigint)
     print("\n[promotion] training complete.")
     print(f"[promotion] final champion: {champion_ckpt}")
 
@@ -2075,11 +2136,13 @@ def find_latest_checkpoint(checkpoint_dir: str) -> str | None:
     return candidates[-1][1]
 
 
-def save_block_state(checkpoint_dir: str, block_idx: int, total_games_done: int, current_start_ckpt: str):
+def save_block_state(checkpoint_dir: str, block_idx: int, total_games_done: int,
+                     current_start_ckpt: str, blocks_without_promotion: int = 0):
     """Persist block index so self_play_with_promotion can resume after a crash."""
     state = {"block_idx": block_idx,
              "total_games_done": total_games_done,
-             "current_start_ckpt": current_start_ckpt}
+             "current_start_ckpt": current_start_ckpt,
+             "blocks_without_promotion": blocks_without_promotion}
     path = os.path.join(checkpoint_dir, "block_state.json")
     with open(path, "w") as f:
         json.dump(state, f, indent=2)
@@ -2105,70 +2168,74 @@ def copy_checkpoint_with_optimizer(src: str, dst: str):
 
 
 def main():
-    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+    import argparse
+    p = argparse.ArgumentParser(
+        description="Train Chinese Checkers RL agent via self-play with promotion",
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    p.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"],
+                   help="Training device")
+    p.add_argument("--fresh", action="store_true",
+                   help="Ignore saved block_state.json and restart from scratch")
+    p.add_argument("--warmstart", action="store_true",
+                   help="Run warmstart (heuristic imitation) phase before self-play")
+    p.add_argument("--blocks", type=int, default=100,
+                   help="Total self-play promotion blocks")
+    p.add_argument("--games-per-block", type=int, default=100,
+                   help="Self-play games per block")
+    p.add_argument("--start-checkpoint", type=str, default=None,
+                   help="Explicit starting checkpoint (default: selfplay/champion.pt)")
+    p.add_argument("--patience", type=int, default=10,
+                   help="Stop after this many consecutive blocks without promotion (0 = disabled)")
+    args = p.parse_args()
 
-    RUN_WARMSTART = False
-    RUN_SELF_PLAY_PROMOTION = True
+    if args.device == "auto":
+        DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+    else:
+        DEVICE = args.device
 
     WARMSTART_DIR = BOOTSTRAP_CHECKPOINT_DIR
-    SELFPLAY_DIR = SELFPLAY_CHECKPOINT_DIR
-
-    WARMSTART_CHUNK_GAMES = 50
-    WARMSTART_MAX_GAMES = 1000
-    WARMSTART_BATCH_SIZE = 64
-    WARMSTART_CHECKPOINT_EVERY = 25
-    WARMSTART_MAX_MOVES = 300
-    WARMSTART_TARGET_ACTION_MATCH = 0.95
-
-    SELFPLAY_TOTAL_BLOCKS = 100
-    SELFPLAY_GAMES_PER_BLOCK = 100
-    SELFPLAY_BATCH_SIZE = 64
-    SELFPLAY_MAX_MOVES = 300
-    SELFPLAY_POSITIONS_PER_CYCLE = 300
-    SELFPLAY_UPDATES_PER_CYCLE = 100
-    SELFPLAY_VALUE_WEIGHT = 0.1
-    SELFPLAY_LR = 3e-4
-
-    MANUAL_START_CHECKPOINT = os.path.join(SELFPLAY_DIR, "champion.pt")
+    SELFPLAY_DIR  = SELFPLAY_CHECKPOINT_DIR
 
     print(f"Architecture name      : {ARCH_NAME}", flush=True)
     print(f"Warm-start directory   : {WARMSTART_DIR}", flush=True)
     print(f"Self-play directory    : {SELFPLAY_DIR}", flush=True)
+    print(f"Device                 : {DEVICE}", flush=True)
+    print(f"Fresh start            : {args.fresh}", flush=True)
 
-    start_checkpoint = MANUAL_START_CHECKPOINT
+    start_checkpoint = args.start_checkpoint or os.path.join(SELFPLAY_DIR, "champion.pt")
 
-    if RUN_WARMSTART:
-        final_ckpt, warmstart_info = warmstart_until_good_enough(target_action_match=WARMSTART_TARGET_ACTION_MATCH,
-                                                                 bootstrap_chunk_games=WARMSTART_CHUNK_GAMES,
-                                                                 max_bootstrap_games=WARMSTART_MAX_GAMES,
-                                                                 batch_size=WARMSTART_BATCH_SIZE,
-                                                                 checkpoint_every=WARMSTART_CHECKPOINT_EVERY,
-                                                                 checkpoint_dir=WARMSTART_DIR,
-                                                                 device=DEVICE,
-                                                                 max_moves_per_game=WARMSTART_MAX_MOVES)
+    if args.warmstart:
+        final_ckpt, warmstart_info = warmstart_until_good_enough(
+            target_action_match=0.95,
+            bootstrap_chunk_games=50,
+            max_bootstrap_games=1000,
+            batch_size=64,
+            checkpoint_every=25,
+            checkpoint_dir=WARMSTART_DIR,
+            device=DEVICE,
+            max_moves_per_game=300)
         start_checkpoint = final_ckpt
         print(f"Warm-start completed: {final_ckpt}", flush=True)
 
-    if RUN_SELF_PLAY_PROMOTION:
-        if start_checkpoint is None:
-            raise ValueError("No starting checkpoint provided for self-play.")
+    print(f"Using start checkpoint: {start_checkpoint}", flush=True)
+    if not os.path.exists(start_checkpoint):
+        raise FileNotFoundError(f"Start checkpoint not found: {start_checkpoint}")
 
-        print(f"Using start checkpoint: {start_checkpoint}", flush=True)
-        if not os.path.exists(start_checkpoint):
-            raise FileNotFoundError(f"Start checkpoint not found: {start_checkpoint}")
-
-        self_play_with_promotion(start_checkpoint=start_checkpoint,
-                                 total_blocks=SELFPLAY_TOTAL_BLOCKS,
-                                 games_per_block=SELFPLAY_GAMES_PER_BLOCK,
-                                 batch_size=SELFPLAY_BATCH_SIZE,
-                                 checkpoint_dir=SELFPLAY_DIR,
-                                 device=DEVICE,
-                                 max_moves_per_game=SELFPLAY_MAX_MOVES,
-                                 positions_per_cycle=SELFPLAY_POSITIONS_PER_CYCLE,
-                                 updates_per_cycle=SELFPLAY_UPDATES_PER_CYCLE,
-                                 value_weight=SELFPLAY_VALUE_WEIGHT,
-                                 mcts_simulations=50,
-                                 lr=SELFPLAY_LR)
+    self_play_with_promotion(start_checkpoint=start_checkpoint,
+                             total_blocks=args.blocks,
+                             games_per_block=args.games_per_block,
+                             batch_size=64,
+                             checkpoint_dir=SELFPLAY_DIR,
+                             device=DEVICE,
+                             max_moves_per_game=300,
+                             positions_per_cycle=300,
+                             updates_per_cycle=100,
+                             value_weight=0.1,
+                             mcts_simulations=50,
+                             lr=3e-4,
+                             fresh=args.fresh,
+                             patience=args.patience)
 
 
 if __name__ == "__main__":
