@@ -95,16 +95,15 @@ CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.dirname(CURRENT_DIR)
 
 
-if CURRENT_DIR not in sys.path:
-    sys.path.insert(0, CURRENT_DIR)
-
+# Only the parent dir is on the path so checkers_board/checkers_pins are
+# importable, while harold_files itself stays importable as a package.
 if PARENT_DIR not in sys.path:
     sys.path.insert(0, PARENT_DIR)
 
-from policy_template import build_model, save_model, load_model, GraphState, MyPolicy, HeuristicPolicy, axial_dist, NeuralMCTS
-from policies import RandomPolicy
+from .policy_template import build_model, save_model, load_model, GraphState, MyPolicy, HeuristicPolicy, axial_dist, NeuralMCTS
+from .policies import RandomPolicy
 from collections import defaultdict
-from environment import ChineseCheckersEnv
+from .environment import ChineseCheckersEnv
 import copy
 
 MODEL_HIDDEN_DIM = 128
