@@ -8,8 +8,24 @@ import random
 import socket
 import time
 from typing import Dict, Any
+import torch
+from harald_files.policy_template import load_model, MyPolicy
 
-HOST = "127.0.0.1"
+CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
+
+CHECKPOINT_PATH = os.path.join(
+    PROJECT_ROOT,
+    "checkpoints",
+    "gnn_h128_l4",
+    "self_play",
+    "champion.pt",
+)
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+
+HOST = "10.229.19.56"  # IP address of the server; change if needed
+LOCAL_HOST = "127.0.0.1"  # IP address of the local machine; change if needed
 PORT = 50555
 DEBUG_NET = os.getenv("DEBUG_NET", "0") not in ("0", "", "false", "False")
 
@@ -24,7 +40,7 @@ def rpc(payload: Dict[str, Any]) -> Dict[str, Any]:
     s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     s.settimeout(10.0)
     try:
-        s.connect((HOST, PORT))
+        s.connect((LOCAL_HOST, PORT))
     except Exception as e:
         return {"ok": False, "error": f"connect-failed: {e}"}
 
@@ -75,6 +91,9 @@ def main():
     game_id = r["game_id"]
     player_id = r["player_id"]
     colour = r["colour"]
+
+    model = load_model(CHECKPOINT_PATH, device=device)
+    policy = MyPolicy(model=model, device=device)
 
     print(f"Joined game {game_id} as {colour}")
 
@@ -174,12 +193,18 @@ def main():
                 time.sleep(0.5)
                 continue
 
-            pid, moves = random.choice(movable)
-            to_index = random.choice(moves)
-
-            delay = random.randint(1, 12)
-            print("Randomized delay:", delay)
-            time.sleep(delay)
+            observation = {"colour": colour,
+                           "state": state,
+                           "legal_moves": legal_moves}
+            
+            try:
+                pid, to_index = policy.select_action(observation)
+            except Exception as e:
+                print("Policy error, falling back to random move: ", e)
+                pid, moves = random.choice(movable)
+                to_index = random.choice(moves)
+            
+            time.sleep(0.2)
             '''-----------------PLAYING LOGIC----------------'''
 
             mv = rpc({
