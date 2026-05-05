@@ -24,8 +24,10 @@ class ChineseCheckersEnv:
 
     def __init__(self, *,num_players: int = 6, player_names: Optional[List[str]] = None, per_move_penalty: float = 0.0,
                  win_reward: float = 1.0, draw_reward: float = 0.0, illegal_move_reward: float = -1.0,
-                 shaping_from_score_delta: bool = False, core_kwargs: Optional[Dict[str, Any]] = None):
-        
+                 shaping_from_score_delta: bool = True,
+                 goal_reward_base: float = 0.01, goal_reward_multiplier: float = 2.0,
+                 core_kwargs: Optional[Dict[str, Any]] = None):
+
         if not (2 <= num_players <= 6):
             raise ValueError("num_players must be between 2 and 6")
         self.num_players = num_players
@@ -35,12 +37,15 @@ class ChineseCheckersEnv:
         self.draw_reward = draw_reward
         self.illegal_move_reward = illegal_move_reward
         self.shaping_from_score_delta = shaping_from_score_delta
+        self.goal_reward_base = goal_reward_base
+        self.goal_reward_multiplier = goal_reward_multiplier
         self.core_kwargs = core_kwargs or {}
 
         self.game: Optional[GameCore] = None
         self.colour_to_player_id: Dict[str, str] = {}
         self.last_scores: Dict[str, float] = {}
         self.last_progress_scores: Dict[str, float] = {}
+        self.last_pins_in_goal: Dict[str, int] = {}
 
     def reset(self) -> Dict[str, Dict[str, Any]]:
         self.game = GameCore(**self.core_kwargs)
@@ -56,6 +61,7 @@ class ChineseCheckersEnv:
                             for p in self.game.players}
         self.last_progress_scores = {p.colour: self.game.training_progress_score(p.colour)
                                      for p in self.game.players}
+        self.last_pins_in_goal = {p.colour: 0 for p in self.game.players}
         return {colour: make_observation(self.game, colour) for colour in self.turn_order}
 
     @property
@@ -89,6 +95,7 @@ class ChineseCheckersEnv:
 
         before_score = self.last_scores.get(colour, 0.0)
         before_progress = self.last_progress_scores.get(colour, self.game.training_progress_score(colour))
+        pins_in_goal_before = self.last_pins_in_goal.get(colour, 0)
 
         result = self.game.apply_move(player_id=player_id, pin_id=pin_id, to_index=to_index)
 
@@ -104,14 +111,23 @@ class ChineseCheckersEnv:
 
         after_score = (self.game.scores.get(player_id, {}) or {}).get("final_score", 0.0)
         after_progress = self.game.training_progress_score(colour)
+        pins_in_goal_after = self.game.colour_pins_in_goal.get(colour, 0)
 
         self.last_scores[colour] = after_score
         self.last_progress_scores[colour] = after_progress
+        self.last_pins_in_goal[colour] = pins_in_goal_after
 
         if self.shaping_from_score_delta:
             # Use clean training progress instead of final_score.
             # Scale down so shaping does not dominate terminal win/loss.
             reward += 0.02 * (after_progress - before_progress)
+
+        # Exponential bonus for each pin that newly reached the goal zone.
+        # The k-th pin (0-indexed) is worth goal_reward_base * goal_reward_multiplier^k,
+        # so later pins are worth exponentially more than earlier ones.
+        new_pins = pins_in_goal_after - pins_in_goal_before
+        for i in range(new_pins):
+            reward += self.goal_reward_base * (self.goal_reward_multiplier ** (pins_in_goal_before + i))
 
         adjudication_event = result.get("adjudication") or getattr(self.game, "last_adjudication_event", None)
         if adjudication_event:

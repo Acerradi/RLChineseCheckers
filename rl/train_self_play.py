@@ -94,12 +94,6 @@ ReplayBuffer = PrioritizedReplayBuffer
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PARENT_DIR = os.path.dirname(CURRENT_DIR)
 
-
-# Only the parent dir is on the path so checkers_board/checkers_pins are
-# importable, while harold_files itself stays importable as a package.
-if PARENT_DIR not in sys.path:
-    sys.path.insert(0, PARENT_DIR)
-
 from .policy_template import build_model, save_model, load_model, GraphState, MyPolicy, HeuristicPolicy, axial_dist, NeuralMCTS
 from .policies import RandomPolicy
 from collections import defaultdict
@@ -111,7 +105,8 @@ MODEL_NUM_LAYERS = 4
 
 ARCH_NAME = f"gnn_h{MODEL_HIDDEN_DIM}_l{MODEL_NUM_LAYERS}"
 
-BASE_CHECKPOINT_DIR = os.path.join("checkpoints", ARCH_NAME)
+# Anchored to the project root so paths are stable regardless of working directory.
+BASE_CHECKPOINT_DIR = os.path.join(PARENT_DIR, "checkpoints", ARCH_NAME)
 BOOTSTRAP_CHECKPOINT_DIR = os.path.join(BASE_CHECKPOINT_DIR, "bootstrap")
 SELFPLAY_CHECKPOINT_DIR = os.path.join(BASE_CHECKPOINT_DIR, "self_play")
 
@@ -1422,7 +1417,8 @@ def bootstrap_imitation(num_games: int = 500,
     for local_game_idx in pbar:
         game_idx = start_game_index + local_game_idx
         num_players = random.choices(TRAIN_PLAYER_COUNTS, weights=TRAIN_PLAYER_COUNT_WEIGHTS, k=1)[0]
-        env = ChineseCheckersEnv(num_players=num_players, per_move_penalty=-0.002)
+        env = ChineseCheckersEnv(num_players=num_players, per_move_penalty=-0.002,
+                                 shaping_from_score_delta=True)
         env.reset()
 
         last_checkpoint_path = find_latest_checkpoint(BOOTSTRAP_CHECKPOINT_DIR)
@@ -1522,7 +1518,8 @@ def evaluate_warmstart_topk_match(checkpoint_path: str,
       - endgame (1-2 outside)       -> exact best move required
     """
     num_players = random.choices(TRAIN_PLAYER_COUNTS, weights=TRAIN_PLAYER_COUNT_WEIGHTS, k=1)[0]
-    env = ChineseCheckersEnv(num_players=num_players, per_move_penalty=-0.002)
+    env = ChineseCheckersEnv(num_players=num_players, per_move_penalty=-0.002,
+                             shaping_from_score_delta=True)
 
     heuristic = HeuristicPolicy(epsilon=0.0)
 
@@ -1719,7 +1716,8 @@ def self_play_refinement(start_checkpoint: str | None = None,
                                      weights=TRAIN_PLAYER_COUNT_WEIGHTS,
                                      k=1)[0]
 
-        env = ChineseCheckersEnv(num_players=num_players, per_move_penalty=-0.002)
+        env = ChineseCheckersEnv(num_players=num_players, per_move_penalty=-0.002,
+                                 shaping_from_score_delta=True)
         env.reset()
 
         random_checkpoint_path = sample_random_checkpoint(checkpoint_dirs=[BOOTSTRAP_CHECKPOINT_DIR, SELFPLAY_CHECKPOINT_DIR],
@@ -1828,9 +1826,9 @@ def self_play_refinement(start_checkpoint: str | None = None,
 
         # Compute discounted returns backward through each color's move sequence.
         # Resigned learner gets -1.0 as terminal value regardless of progress.
-        # Target values are clipped to [-1, 1] to stay within the tanh value head's range.
-        # Without clipping, accumulated stranded_home_penalty step rewards (e.g. -0.6/move
-        # over 36 moves with GAMMA=0.99) produce targets as extreme as -20, making MSE ~200.
+        # Clip range is widened to [-2, 8] to accommodate exponential goal-entry rewards
+        # (completing all 10 pins is worth ~10 in total shaping) while still preventing
+        # runaway MSE from rare extreme adjudication sequences.
         examples = []
         for colour, exs in per_colour_examples.items():
             if colour == learner_colour and resigned:
@@ -1840,7 +1838,7 @@ def self_play_refinement(start_checkpoint: str | None = None,
             g = terminal_val
             for ex in reversed(exs):
                 g = ex.pop("step_reward", 0.0) + GAMMA * g
-                ex["target_value"] = float(max(-1.0, min(1.0, g)))
+                ex["target_value"] = float(max(-2.0, min(8.0, g)))
             examples.extend(exs)
 
         for ex in examples:
@@ -1985,14 +1983,17 @@ def self_play_with_promotion(start_checkpoint: str,
     global _stop_requested
     _stop_requested = False
     old_sigint = signal.signal(signal.SIGINT, _request_stop)
+    train_start = time.time()
     try:
       for block_idx in range(resume_block, total_blocks + 1):
         if _stop_requested:
             print("[train] Stop requested — exiting after last completed block.", flush=True)
             break
+        elapsed_sec = time.time() - train_start
+        elapsed_str = f"{int(elapsed_sec // 3600):02d}h {int((elapsed_sec % 3600) // 60):02d}m {int(elapsed_sec % 60):02d}s"
         print("\n" + "#" * 80)
-        print(f"[promotion] STARTING BLOCK {block_idx}/{total_blocks}")
-        print(f"[promotion] actual champion = {champion_ckpt}")
+        print(f"[promotion] BLOCK {block_idx}/{total_blocks}  |  no-improvement: {blocks_without_promotion}/{patience}  |  elapsed: {elapsed_str}")
+        print(f"[promotion] actual champion   = {champion_ckpt}")
         print(f"[promotion] training starts from = {current_start_ckpt}")
         print("#" * 80)
 

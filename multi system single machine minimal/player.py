@@ -3,11 +3,26 @@
 # =============================================================
 
 import os
+import sys
 import json
 import random
 import socket
 import time
 from typing import Dict, Any
+
+_HERE = os.path.dirname(os.path.abspath(__file__))
+_ROOT = os.path.dirname(_HERE)
+_RLMODULE= os.path.join(_ROOT, "rl")
+for _p in (_HERE, _RLMODULE):
+    if _p not in sys.path:
+        sys.path.insert(0, _p)
+
+import argparse
+from policy_template import MyPolicy, load_model  # noqa: E402
+from policies import RandomPolicy  # noqa: E402
+
+CHECKPOINT = os.path.join(_ROOT, "checkpoints", "gnn_h128_l4", "self_play", "champion.pt")
+DEVICE = "cpu"
 
 HOST = "127.0.0.1"
 PORT = 50555
@@ -60,7 +75,19 @@ def render_json_board(state):
 # Main client loop
 # =============================================================
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--policy", choices=["champion", "random"], default="champion")
+    args = parser.parse_args()
+
     timeoutnotice_move = -1
+    if args.policy == "random":
+        policy = RandomPolicy()
+        print("Using random policy")
+    else:
+        model = load_model(CHECKPOINT, device=DEVICE)
+        policy = MyPolicy(model=model, device=DEVICE)
+        print(f"Loaded champion from {CHECKPOINT}")
+
     print("==== Player ====")
     name = input("Enter name: ").strip()
     if not name:
@@ -168,18 +195,12 @@ def main():
             # legal_moves example structure:
             # { pin_id: [to_index1, to_index2, ...], ... }
 
-            movable = [(pid, moves) for pid, moves in legal_moves.items() if moves]
-            if not movable:
-                print("No legal moves available.")
-                time.sleep(0.5)
-                continue
-
-            pid, moves = random.choice(movable)
-            to_index = random.choice(moves)
-
-            delay = random.randint(1, 12)
-            print("Randomized delay:", delay)
-            time.sleep(delay)
+            obs = {
+                "colour": colour,
+                "state": state,
+                "legal_moves": legal_moves,
+            }
+            pid, to_index = policy.select_action(obs)
             '''-----------------PLAYING LOGIC----------------'''
 
             mv = rpc({
