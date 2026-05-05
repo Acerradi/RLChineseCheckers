@@ -85,38 +85,38 @@ Run from the `multi system single machine minimal` directory.
 Training automatically resumes from the last completed block (via `block_state.json`):
 
 ```bash
-python -m harold_files.train_self_play
+python -m harald_files.train_self_play
 ```
 
 ### Start fresh (ignore saved state)
 
 ```bash
-python -m harold_files.train_self_play --fresh
+python -m harald_files.train_self_play --fresh
 ```
 
 ### Select device
 
 ```bash
-python -m harold_files.train_self_play --device cuda
-python -m harold_files.train_self_play --device cpu
+python -m harald_files.train_self_play --device cuda
+python -m harald_files.train_self_play --device cpu
 ```
 
 ### Control number of blocks and games per block
 
 ```bash
-python -m harold_files.train_self_play --blocks 200 --games-per-block 50
+python -m harald_files.train_self_play --blocks 200 --games-per-block 50
 ```
 
 ### Run warmstart phase first, then self-play
 
 ```bash
-python -m harold_files.train_self_play --warmstart
+python -m harald_files.train_self_play --warmstart
 ```
 
 ### Resume from a specific checkpoint
 
 ```bash
-python -m harold_files.train_self_play --start-checkpoint checkpoints/gnn_h128_l4/self_play/champion.pt
+python -m harald_files.train_self_play --start-checkpoint checkpoints/gnn_h128_l4/self_play/champion.pt
 ```
 
 ### Stop gracefully
