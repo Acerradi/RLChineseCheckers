@@ -60,6 +60,21 @@ WARMSTART_OPPONENT_WEIGHTS = {"heuristic": 0.50,
                               "random": 0.30,
                               "last_checkpoint": 0.20}
 
+# Warm-start data diversification.
+# Prefix rollouts create legal, game-like but more varied positions before the
+# heuristic target labels are collected.
+WARMSTART_POSITION_NOISE = True
+BOOTSTRAP_FROM_MIXED_ROLLOUTS = True
+WARMSTART_USE_MIXED_ROLLOUT_PREFIX = WARMSTART_POSITION_NOISE and BOOTSTRAP_FROM_MIXED_ROLLOUTS
+WARMSTART_PREFIX_ROLLOUT_MAX_MOVES = 80
+WARMSTART_PREFIX_ROLLOUT_PROB = 0.70
+WARMSTART_COLLECT_ALL_HEURISTIC_SEATS = True
+WARMSTART_MAX_LABEL_MOVES_AFTER_PREFIX = 220
+WARMSTART_ROLLOUT_POLICY_WEIGHTS = {"heuristic": 0.35,
+                                    "noisy_heuristic": 0.25,
+                                    "random": 0.25,
+                                    "last_checkpoint": 0.15}
+
 # Self-play opponent mix
 SELFPLAY_OPPONENT_WEIGHTS = {"champion": 0.25,
                              "warmstart_final": 0.15,
@@ -67,6 +82,17 @@ SELFPLAY_OPPONENT_WEIGHTS = {"champion": 0.25,
                              "random": 0.10,
                              "random_checkpoint": 0.15,
                              "current_model": 0.20}
+
+# During self-play, train from every current-model seat that is MCTS-guided.
+# Opponent seats controlled by heuristic/random/checkpoints remain data generators,
+# but are not treated as learner-quality policy labels.
+COLLECT_ALL_CURRENT_MODEL_MCTS_SEATS = True
+
+# Use MCTS visit distributions for exploration in training games. Evaluation and
+# promotion still use deterministic policies elsewhere.
+MCTS_TRAIN_SAMPLE_UNTIL_MOVE = 120
+MCTS_TRAIN_TEMPERATURE = 1.0
+MCTS_TRAIN_LATE_TEMPERATURE = 0.25
 
 # ============================================================
 # CHECKPOINT PROMOTION CONFIG
@@ -87,9 +113,6 @@ PROMOTION_MAX_TRUNCATION_RATE = 0.15
 PROMOTION_MAX_AVG_WIN_MOVES = 220.0
 PROMOTION_MIN_PROGRESS_SCORE = 0.0
 
-# Harsh truncated-game punishment for value targets
-TRUNCATED_VALUE = -0.75
-
 # Champion path
 CHAMPION_NAME = "champion.pt"
 
@@ -108,7 +131,7 @@ REJECT_RESET_MAX_TRUNCATION_RATE = 0.60
 
 # Optional: reset if adjudication/degenerate rates are too high.
 REJECT_RESET_MAX_STALL_ADJ_RATE = 0.35
-REJECT_RESET_MAX_STRANDED_HOME_ADJ_RATE = 0.35
+REJECT_RESET_MAX_STRANDED_HOME_ADJ_RATE = 0.40
 REJECT_RESET_MAX_REPETITION_ADJ_RATE = 0.35
 
 # ============================================================
@@ -167,9 +190,7 @@ def action_quality_metrics(history, board, focus_colour: str | None = None) -> d
     jump_moves = 0
     undo_moves = 0
 
-    last_from = None
-    last_to = None
-    last_colour = None
+    last_move_by_colour = {}
 
     for mv in history:
         colour = mv.get("colour")
@@ -211,12 +232,11 @@ def action_quality_metrics(history, board, focus_colour: str | None = None) -> d
         if jump_distance > 1:
             jump_moves += 1
 
-        if last_colour == colour and last_from == to_idx and last_to == from_idx:
+        own_last_move = last_move_by_colour.get(colour)
+        if own_last_move is not None and own_last_move == (to_idx, from_idx):
             undo_moves += 1
 
-        last_from = from_idx
-        last_to = to_idx
-        last_colour = colour
+        last_move_by_colour[colour] = (from_idx, to_idx)
 
     return {"forward_moves": forward_moves,
             "backward_moves": backward_moves,
@@ -1088,6 +1108,89 @@ def build_warmstart_policy_cache(seat_plan: dict[str, str],
 
     return cache
 
+def add_heuristic_imitation_example(learner: TrainableAgent,
+                                    observation: dict,
+                                    chosen_action: tuple[int, int],
+                                    examples_by_colour: dict) -> None:
+    colour = observation["colour"]
+    gs = learner.graph_from_observation(observation)
+
+    action_index = None
+    for i, (pin_id, _, to_idx) in enumerate(gs.legal_actions):
+        if (pin_id, to_idx) == chosen_action:
+            action_index = i
+            break
+
+    if action_index is None:
+        raise RuntimeError("Heuristic action not found in legal action list")
+
+    examples_by_colour[colour].append({"graph_state": gs,
+                                       "action_index": action_index})
+
+def sample_warmstart_rollout_kind(has_last_checkpoint: bool) -> str:
+    allowed = ["heuristic", "noisy_heuristic", "random"]
+    if has_last_checkpoint:
+        allowed.append("last_checkpoint")
+    return weighted_sample_kind(WARMSTART_ROLLOUT_POLICY_WEIGHTS, allowed)
+
+def run_warmstart_mixed_rollout_prefix(env: ChineseCheckersEnv,
+                                       *,
+                                       max_prefix_moves: int,
+                                       prefix_probability: float,
+                                       heuristic: HeuristicPolicy,
+                                       noisy_heuristic: HeuristicPolicy,
+                                       last_checkpoint_path: str | None,
+                                       device: str) -> dict:
+    """
+    Advance the environment with mixed legal policies before collecting labels.
+
+    This creates broader, still-reachable positions for warm-start imitation.
+    """
+    if max_prefix_moves <= 0 or random.random() > prefix_probability:
+        return {"prefix_moves": 0,
+                "prefix_truncated": False,
+                "prefix_kind_counts": {}}
+
+    last_checkpoint_policy = build_checkpoint_policy_if_exists(last_checkpoint_path, device=device)
+    has_last_checkpoint = last_checkpoint_policy is not None
+    random_policy = build_random_policy()
+
+    kind_counts = defaultdict(int)
+    prefix_moves = random.randint(0, max_prefix_moves)
+    moves_done = 0
+
+    for _ in range(prefix_moves):
+        if env.game.status == "FINISHED":
+            break
+
+        colour = env.current_turn_colour
+        if colour is None:
+            break
+
+        obs = env.observe(colour)
+        kind = sample_warmstart_rollout_kind(has_last_checkpoint=has_last_checkpoint)
+        kind_counts[kind] += 1
+
+        if kind == "heuristic":
+            action = heuristic.select_action(obs)
+        elif kind == "noisy_heuristic":
+            action = noisy_heuristic.select_action(obs)
+        elif kind == "random":
+            action = random_policy.select_action(obs)
+        elif kind == "last_checkpoint" and last_checkpoint_policy is not None:
+            action = last_checkpoint_policy.select_action(obs)
+        else:
+            action = heuristic.select_action(obs)
+
+        step_result = env.step(colour, action)
+        moves_done += 1
+        if step_result.done:
+            break
+
+    return {"prefix_moves": moves_done,
+            "prefix_truncated": env.game.status == "FINISHED",
+            "prefix_kind_counts": dict(kind_counts)}
+
 def build_selfplay_policy_cache(seat_plan: dict[str, str],
                                 learner: TrainableAgent,
                                 heuristic: HeuristicPolicy,
@@ -1229,6 +1332,40 @@ def mcts_label_for_observation(learner: TrainableAgent,
 
     return best_action, gs, target_policy, {"mcts_failed": mcts_failed}
 
+def sample_action_from_target_policy(graph_state: GraphState,
+                                     target_policy: torch.Tensor,
+                                     best_action: tuple[int, int],
+                                     move_count: int,
+                                     sample_until_move: int,
+                                     temperature: float,
+                                     late_temperature: float) -> tuple[tuple[int, int], bool]:
+    """
+    Pick the played training action from the MCTS visit distribution.
+
+    Early/mid-game uses temperature sampling for exploration. Late game falls
+    back to deterministic MCTS argmax so finishing behavior stays sharp.
+    """
+    if move_count >= sample_until_move:
+        return best_action, False
+
+    temp = temperature if move_count < sample_until_move // 2 else late_temperature
+    if temp <= 0.0 or target_policy.numel() == 0:
+        return best_action, False
+
+    probs = target_policy.detach().float().cpu().clamp(min=0.0)
+    if probs.sum() <= 0:
+        return best_action, False
+
+    if temp != 1.0:
+        probs = probs.pow(1.0 / temp)
+        if probs.sum() <= 0:
+            return best_action, False
+
+    probs = probs / probs.sum()
+    action_idx = int(torch.multinomial(probs, num_samples=1).item())
+    pin_id, _, to_idx = graph_state.legal_actions[action_idx]
+    return (pin_id, to_idx), (pin_id, to_idx) != best_action
+
 def terminal_value_from_result(game, final_state, colour: str, truncated: bool) -> float:
     """
     Multiplayer-safe value target from this colour's perspective.
@@ -1273,13 +1410,19 @@ def bootstrap_imitation(num_games: int = 500,
                         start_game_index: int = 0,
                         positions_per_cycle: int = 2500,
                         updates_per_cycle: int = 200,
-                        num_players: int = 6):
+                        num_players: int = 6,
+                        use_mixed_rollout_prefix: bool = WARMSTART_USE_MIXED_ROLLOUT_PREFIX,
+                        prefix_rollout_max_moves: int = WARMSTART_PREFIX_ROLLOUT_MAX_MOVES,
+                        prefix_rollout_prob: float = WARMSTART_PREFIX_ROLLOUT_PROB,
+                        collect_all_heuristic_seats: bool = WARMSTART_COLLECT_ALL_HEURISTIC_SEATS,
+                        max_label_moves_after_prefix: int = WARMSTART_MAX_LABEL_MOVES_AFTER_PREFIX):
     """
     Warm-start using heuristic imitation on one tracked seat, but with mixed opponents.
     """
     os.makedirs(checkpoint_dir, exist_ok=True)
 
     heuristic = HeuristicPolicy(epsilon=0.0)
+    noisy_heuristic = HeuristicPolicy(epsilon=4.0)
     learner = TrainableAgent(name="shared_model",
                             device=device,
                             hidden_dim=MODEL_HIDDEN_DIM,
@@ -1305,35 +1448,50 @@ def bootstrap_imitation(num_games: int = 500,
                                                    heuristic=heuristic,
                                                    last_checkpoint_path=last_checkpoint_path,
                                                    device=device)
+
+        rollout_info = {"prefix_moves": 0,
+                        "prefix_truncated": False,
+                        "prefix_kind_counts": {}}
+        if use_mixed_rollout_prefix:
+            rollout_info = run_warmstart_mixed_rollout_prefix(env,
+                                                              max_prefix_moves=prefix_rollout_max_moves,
+                                                              prefix_probability=prefix_rollout_prob,
+                                                              heuristic=heuristic,
+                                                              noisy_heuristic=noisy_heuristic,
+                                                              last_checkpoint_path=last_checkpoint_path,
+                                                              device=device)
+
         progress_print("bootstrap",
                        f"starting game={game_idx} num_players={num_players} "
-                       f"learner_colour={learner_colour} seat_plan={seat_plan}")
+                       f"learner_colour={learner_colour} seat_plan={seat_plan} "
+                       f"prefix_moves={rollout_info['prefix_moves']} "
+                       f"prefix_kinds={rollout_info['prefix_kind_counts']}")
         per_colour_examples = defaultdict(list)
         done = False
         game_start = time.time()
+        label_moves_done = 0
 
-        while not done and env.game.move_count < max_moves_per_game:
+        while (not done
+               and env.game.status != "FINISHED"
+               and env.game.move_count < max_moves_per_game
+               and label_moves_done < max_label_moves_after_prefix):
             colour = env.current_turn_colour
             obs = env.observe(colour)
 
             chosen_action = policy_cache[colour].select_action(obs)
-            if colour == learner_colour:
-                gs = learner.graph_from_observation(obs)
-
-                action_index = None
-                for i, (pin_id, _, to_idx) in enumerate(gs.legal_actions):
-                    if (pin_id, to_idx) == chosen_action:
-                        action_index = i
-                        break
-
-                if action_index is None:
-                    raise RuntimeError("Heuristic action not found in legal action list")
-
-                per_colour_examples[colour].append({"graph_state": gs,
-                                                    "action_index": action_index})
+            should_collect_label = (
+                colour == learner_colour
+                or (collect_all_heuristic_seats and seat_plan[colour] in {"teacher_seat", "heuristic"})
+            )
+            if should_collect_label:
+                add_heuristic_imitation_example(learner=learner,
+                                                observation=obs,
+                                                chosen_action=chosen_action,
+                                                examples_by_colour=per_colour_examples)
 
             step_result = env.step(colour, chosen_action)
             done = step_result.done
+            label_moves_done += 1
 
         truncated = env.game.move_count >= max_moves_per_game
         if truncated:
@@ -1378,6 +1536,8 @@ def bootstrap_imitation(num_games: int = 500,
         elapsed = time.time() - game_start
         loss_str = f"{avg_loss:.4f}" if avg_loss is not None else "NA"
         print(f"[bootstrap] game={game_idx} moves={env.game.move_count} "
+              f"prefix_moves={rollout_info['prefix_moves']} "
+              f"label_moves={label_moves_done} "
               f"examples={len(examples)} buffer={len(buffer)} "
               f"positions_since_update={positions_since_update} "
               f"avg_loss={loss_str} truncated={truncated} time={elapsed:.2f}s")
@@ -1394,7 +1554,10 @@ def evaluate_warmstart_topk_match(checkpoint_path: str,
                                   eval_games: int = 20,
                                   max_positions: int = 1000,
                                   device: str = "cpu",
-                                  k: int = 3) -> dict:
+                                  k: int = 3,
+                                  use_mixed_rollout_prefix: bool = WARMSTART_USE_MIXED_ROLLOUT_PREFIX,
+                                  prefix_rollout_max_moves: int = WARMSTART_PREFIX_ROLLOUT_MAX_MOVES,
+                                  prefix_rollout_prob: float = WARMSTART_PREFIX_ROLLOUT_PROB) -> dict:
     """
     Measures how often the model's chosen action is among the heuristic's top-k legal moves
     on states generated by heuristic play.
@@ -1404,23 +1567,38 @@ def evaluate_warmstart_topk_match(checkpoint_path: str,
       - few pieces outside target   -> narrower top-k
       - endgame (1-2 outside)       -> exact best move required
     """
-    num_players = random.choices(TRAIN_PLAYER_COUNTS, weights=TRAIN_PLAYER_COUNT_WEIGHTS, k=1)[0]
-    env = ChineseCheckersEnv(num_players=num_players)
-
     heuristic = HeuristicPolicy(epsilon=0.0)
+    noisy_heuristic = HeuristicPolicy(epsilon=4.0)
 
     model = load_model(checkpoint_path, device=device)
     learner = MyPolicy(model=model, device=device)
 
     matches = 0
+    exact_matches = 0
+    fixed_top3_matches = 0
     total = 0
+    rank_sum = 0.0
+    legal_action_sum = 0
 
     adaptive_breakdown = {"k1": 0,
                           "k3": 0,
                           "k5": 0}
+    prefix_moves_total = 0
 
     for _ in range(eval_games):
+        num_players = random.choices(TRAIN_PLAYER_COUNTS, weights=TRAIN_PLAYER_COUNT_WEIGHTS, k=1)[0]
+        env = ChineseCheckersEnv(num_players=num_players)
         env.reset()
+        if use_mixed_rollout_prefix:
+            rollout_info = run_warmstart_mixed_rollout_prefix(env,
+                                                              max_prefix_moves=prefix_rollout_max_moves,
+                                                              prefix_probability=prefix_rollout_prob,
+                                                              heuristic=heuristic,
+                                                              noisy_heuristic=noisy_heuristic,
+                                                              last_checkpoint_path=checkpoint_path,
+                                                              device=device)
+            prefix_moves_total += rollout_info["prefix_moves"]
+
         done = False
 
         while not done and total < max_positions:
@@ -1460,10 +1638,23 @@ def evaluate_warmstart_topk_match(checkpoint_path: str,
             scored_actions.sort(key=lambda x: x[1], reverse=True)
 
             topk_actions = {action for action, _ in scored_actions[:effective_k]}
+            fixed_top3_actions = {action for action, _ in scored_actions[:3]}
+            best_action = scored_actions[0][0]
             model_action = learner.select_action(obs)
 
             if tuple(model_action) in topk_actions:
                 matches += 1
+            if tuple(model_action) == best_action:
+                exact_matches += 1
+            if tuple(model_action) in fixed_top3_actions:
+                fixed_top3_matches += 1
+
+            ranked_actions = [action for action, _ in scored_actions]
+            if tuple(model_action) in ranked_actions:
+                rank_sum += ranked_actions.index(tuple(model_action)) + 1
+            else:
+                rank_sum += len(ranked_actions) + 1
+            legal_action_sum += len(ranked_actions)
 
             total += 1
 
@@ -1475,8 +1666,15 @@ def evaluate_warmstart_topk_match(checkpoint_path: str,
 
     match_rate = matches / total if total > 0 else 0.0
     return {"topk_match_rate": match_rate,
+            "exact_match_rate": exact_matches / total if total > 0 else 0.0,
+            "fixed_top3_match_rate": fixed_top3_matches / total if total > 0 else 0.0,
+            "avg_heuristic_rank": rank_sum / total if total > 0 else 0.0,
+            "avg_legal_actions": legal_action_sum / total if total > 0 else 0.0,
             "matches": matches,
+            "exact_matches": exact_matches,
+            "fixed_top3_matches": fixed_top3_matches,
             "total": total,
+            "avg_prefix_moves": prefix_moves_total / eval_games if eval_games > 0 else 0.0,
             "adaptive_breakdown": adaptive_breakdown}
 
 
@@ -1488,6 +1686,11 @@ def warmstart_until_good_enough(target_action_match: float = 0.80,
                                 checkpoint_dir: str = "checkpoints/bootstrap",
                                 device: str = "cpu",
                                 max_moves_per_game: int = 500,
+                                use_mixed_rollout_prefix: bool = WARMSTART_USE_MIXED_ROLLOUT_PREFIX,
+                                prefix_rollout_max_moves: int = WARMSTART_PREFIX_ROLLOUT_MAX_MOVES,
+                                prefix_rollout_prob: float = WARMSTART_PREFIX_ROLLOUT_PROB,
+                                collect_all_heuristic_seats: bool = WARMSTART_COLLECT_ALL_HEURISTIC_SEATS,
+                                max_label_moves_after_prefix: int = WARMSTART_MAX_LABEL_MOVES_AFTER_PREFIX,
                                 ) -> tuple[str, dict]:
     """
     Repeatedly runs bootstrap imitation in chunks, evaluating after each chunk,
@@ -1510,7 +1713,12 @@ def warmstart_until_good_enough(target_action_match: float = 0.80,
                             device=device,
                             max_moves_per_game=max_moves_per_game,
                             start_checkpoint=current_checkpoint,
-                            start_game_index=total_games)
+                            start_game_index=total_games,
+                            use_mixed_rollout_prefix=use_mixed_rollout_prefix,
+                            prefix_rollout_max_moves=prefix_rollout_max_moves,
+                            prefix_rollout_prob=prefix_rollout_prob,
+                            collect_all_heuristic_seats=collect_all_heuristic_seats,
+                            max_label_moves_after_prefix=max_label_moves_after_prefix)
         
         total_games += bootstrap_chunk_games
 
@@ -1522,11 +1730,19 @@ def warmstart_until_good_enough(target_action_match: float = 0.80,
             eval_games=20,
             max_positions=1000,
             device=device,
-            k=3)
+            k=3,
+            use_mixed_rollout_prefix=use_mixed_rollout_prefix,
+            prefix_rollout_max_moves=prefix_rollout_max_moves,
+            prefix_rollout_prob=prefix_rollout_prob)
 
         print(f"[warmstart eval] games={total_games} "
               f"adaptive_match_rate={action_eval['topk_match_rate']:.3f} "
               f"({action_eval['matches']}/{action_eval['total']}) "
+              f"exact={action_eval['exact_match_rate']:.3f} "
+              f"top3={action_eval['fixed_top3_match_rate']:.3f} "
+              f"avg_rank={action_eval['avg_heuristic_rank']:.2f} "
+              f"avg_legal={action_eval['avg_legal_actions']:.1f} "
+              f"avg_prefix={action_eval['avg_prefix_moves']:.1f} "
               f"k1={action_eval['adaptive_breakdown']['k1']} "
               f"k3={action_eval['adaptive_breakdown']['k3']} "
               f"k5={action_eval['adaptive_breakdown']['k5']}")
@@ -1551,7 +1767,11 @@ def self_play_refinement(start_checkpoint: str | None = None,
                          updates_per_cycle: int = 50,
                          value_weight: float = 0.5,
                          num_players: int = 6,
-                         mcts_simulations: int = 128):
+                         mcts_simulations: int = 128,
+                         collect_all_current_model_mcts_seats: bool = COLLECT_ALL_CURRENT_MODEL_MCTS_SEATS,
+                         mcts_sample_until_move: int = MCTS_TRAIN_SAMPLE_UNTIL_MOVE,
+                         mcts_temperature: float = MCTS_TRAIN_TEMPERATURE,
+                         mcts_late_temperature: float = MCTS_TRAIN_LATE_TEMPERATURE):
     """
     MCTS-labeled self-play:
     - policy targets come from MCTS visit distributions
@@ -1580,6 +1800,8 @@ def self_play_refinement(start_checkpoint: str | None = None,
                    "max_moves_adjudicated": 0,
                    "mcts_calls": 0,
                    "mcts_failures": 0,
+                   "mcts_sampled_non_argmax": 0,
+                   "mcts_trained_seat_moves": 0,
                    "total_moves": 0,
                    "total_examples": 0,
                    "total_stranded_home": 0.0,
@@ -1623,28 +1845,40 @@ def self_play_refinement(start_checkpoint: str | None = None,
         done = False
         game_start = time.time()
 
-        mcts_calls = 0
-        mcts_failures = 0
-
         while not done and env.game.move_count < max_moves_per_game:
             colour = env.current_turn_colour
             obs = env.observe(colour)
-            
-            if colour == learner_colour:
-                chosen_action, gs, target_policy, mcts_meta = mcts_label_for_observation(learner=learner,
-                                                                                         env=env,
-                                                                                         colour=colour,
-                                                                                         num_simulations=mcts_simulations,
-                                                                                         allow_heuristic_fallback=False)
+
+            seat_kind = seat_plan[colour]
+            should_collect_mcts = (
+                seat_kind == "tracked_current"
+                or (collect_all_current_model_mcts_seats and seat_kind == "current_model")
+            )
+
+            if should_collect_mcts:
+                best_action, gs, target_policy, mcts_meta = mcts_label_for_observation(learner=learner,
+                                                                                       env=env,
+                                                                                       colour=colour,
+                                                                                       num_simulations=mcts_simulations,
+                                                                                       allow_heuristic_fallback=False)
+
+                chosen_action, sampled_non_argmax = sample_action_from_target_policy(graph_state=gs,
+                                                                                     target_policy=target_policy,
+                                                                                     best_action=best_action,
+                                                                                     move_count=env.game.move_count,
+                                                                                     sample_until_move=mcts_sample_until_move,
+                                                                                     temperature=mcts_temperature,
+                                                                                     late_temperature=mcts_late_temperature)
 
                 per_colour_examples[colour].append({"graph_state": gs,
                                                     "target_policy": target_policy,
-                                                    "mcts_failed": mcts_meta["mcts_failed"]})
-                mcts_calls += 1
-                mcts_failures += int(mcts_meta["mcts_failed"])
-                per_colour_examples[colour].append({"graph_state": gs,
-                                                    "target_policy": target_policy,
-                                                    "mcts_failed": mcts_meta.get("mcts_failed", False)})
+                                                    "mcts_failed": mcts_meta["mcts_failed"],
+                                                    "seat_kind": seat_kind,
+                                                    "sampled_non_argmax": sampled_non_argmax})
+                run_metrics["mcts_calls"] += 1
+                run_metrics["mcts_failures"] += int(mcts_meta["mcts_failed"])
+                run_metrics["mcts_sampled_non_argmax"] += int(sampled_non_argmax)
+                run_metrics["mcts_trained_seat_moves"] += 1
             else:
                 chosen_action = policy_cache[colour].select_action(obs)
             
@@ -1753,6 +1987,7 @@ def self_play_refinement(start_checkpoint: str | None = None,
               f"loss={loss_str} truncated={truncated} "
               f"adj={adjudication_type} "
               f"mcts_fail_rate={mcts_failure_rate_so_far:.3f} "
+              f"mcts_sampled={run_metrics['mcts_sampled_non_argmax']} "
               f"avg_stranded_this_game={avg_stranded_this_game:.2f} "
               f"max_stranded_this_game={max_stranded_this_game} "
               f"time={elapsed:.2f}s")
@@ -1781,6 +2016,9 @@ def self_play_refinement(start_checkpoint: str | None = None,
     print(f"mcts_calls                 : {run_metrics['mcts_calls']}")
     print(f"mcts_failures              : {run_metrics['mcts_failures']}")
     print(f"mcts_failure_rate          : {safe_rate(run_metrics['mcts_failures'], run_metrics['mcts_calls']):.3f}")
+    print(f"mcts_trained_seat_moves    : {run_metrics['mcts_trained_seat_moves']}")
+    print(f"mcts_sampled_non_argmax    : {run_metrics['mcts_sampled_non_argmax']}")
+    print(f"mcts_sampled_non_argmax_rate: {safe_rate(run_metrics['mcts_sampled_non_argmax'], run_metrics['mcts_trained_seat_moves']):.3f}")
     print(f"avg_stranded_home          : {safe_rate(run_metrics['total_stranded_home'], games):.3f}")
     print(f"max_stranded_home          : {run_metrics['max_stranded_home']}")
 
@@ -1807,7 +2045,11 @@ def self_play_with_promotion(start_checkpoint: str,
                              positions_per_cycle: int = 2500,
                              updates_per_cycle: int = 150,
                              value_weight: float = 0.5,
-                             mcts_simulations: int = 128):
+                             mcts_simulations: int = 128,
+                             collect_all_current_model_mcts_seats: bool = COLLECT_ALL_CURRENT_MODEL_MCTS_SEATS,
+                             mcts_sample_until_move: int = MCTS_TRAIN_SAMPLE_UNTIL_MOVE,
+                             mcts_temperature: float = MCTS_TRAIN_TEMPERATURE,
+                             mcts_late_temperature: float = MCTS_TRAIN_LATE_TEMPERATURE):
     os.makedirs(checkpoint_dir, exist_ok=True)
 
     champion_ckpt = os.path.join(checkpoint_dir, CHAMPION_NAME)
@@ -1841,7 +2083,11 @@ def self_play_with_promotion(start_checkpoint: str,
                              positions_per_cycle=positions_per_cycle,
                              updates_per_cycle=updates_per_cycle,
                              value_weight=value_weight,
-                             mcts_simulations=mcts_simulations)
+                             mcts_simulations=mcts_simulations,
+                             collect_all_current_model_mcts_seats=collect_all_current_model_mcts_seats,
+                             mcts_sample_until_move=mcts_sample_until_move,
+                             mcts_temperature=mcts_temperature,
+                             mcts_late_temperature=mcts_late_temperature)
 
         # self_play_refinement writes shared_model_final.pt
         produced_ckpt = os.path.join(checkpoint_dir, "shared_model_final.pt")
@@ -1902,25 +2148,6 @@ def self_play_with_promotion(start_checkpoint: str,
     print("\n[promotion] training complete.")
     print(f"[promotion] final champion: {champion_ckpt}")
 
-def normalized_final_score(game, colour: str) -> float:
-    """Extract the final score for the given colour from the game state and normalize it to [-1, 1]."""
-    player = next(p for p in game.players if p.colour == colour)
-    score_dict = game.scores.get(player.player_id, {})
-    raw = score_dict.get("final_score", 0.0)
-
-    # Example normalization
-    return max(-1.0, min(1.0, raw / 1200.0))
-
-
-def checkpoint_game_index(path: str) -> int:
-    name = os.path.basename(path)
-    if name.startswith("shared_model_") and name.endswith(".pt"):
-        stem = name[len("shared_model_"):-3]
-        if stem.isdigit():
-            return int(stem)
-    return 0
-
-
 def maybe_load_into_learner(learner: TrainableAgent, checkpoint_path: str | None):
     if checkpoint_path is not None and os.path.exists(checkpoint_path):
         learner.load(checkpoint_path)
@@ -1948,18 +2175,25 @@ def find_latest_checkpoint(checkpoint_dir: str) -> str | None:
 def main():
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-    RUN_WARMSTART = True
+    RUN_WARMSTART = False
     RUN_SELF_PLAY_PROMOTION = True
 
     WARMSTART_DIR = BOOTSTRAP_CHECKPOINT_DIR
     SELFPLAY_DIR = SELFPLAY_CHECKPOINT_DIR
 
     WARMSTART_CHUNK_GAMES = 50
-    WARMSTART_MAX_GAMES = 1000
+    WARMSTART_MAX_GAMES = 10000
     WARMSTART_BATCH_SIZE = 64
     WARMSTART_CHECKPOINT_EVERY = 25
     WARMSTART_MAX_MOVES = 300
-    WARMSTART_TARGET_ACTION_MATCH = 0.95
+    WARMSTART_TARGET_ACTION_MATCH = 0.90
+    WARMSTART_POSITION_NOISE = True
+    BOOTSTRAP_FROM_MIXED_ROLLOUTS = True
+    WARMSTART_USE_MIXED_ROLLOUT_PREFIX = WARMSTART_POSITION_NOISE and BOOTSTRAP_FROM_MIXED_ROLLOUTS
+    WARMSTART_PREFIX_ROLLOUT_MAX_MOVES = 80
+    WARMSTART_PREFIX_ROLLOUT_PROB = 0.65
+    WARMSTART_COLLECT_ALL_HEURISTIC_SEATS = True
+    WARMSTART_MAX_LABEL_MOVES_AFTER_PREFIX = 220
 
     SELFPLAY_TOTAL_BLOCKS = 100
     SELFPLAY_GAMES_PER_BLOCK = 50
@@ -1968,6 +2202,10 @@ def main():
     SELFPLAY_POSITIONS_PER_CYCLE = 300
     SELFPLAY_UPDATES_PER_CYCLE = 100
     SELFPLAY_VALUE_WEIGHT = 0.05
+    SELFPLAY_COLLECT_ALL_CURRENT_MODEL_MCTS_SEATS = True
+    SELFPLAY_MCTS_SAMPLE_UNTIL_MOVE = 120
+    SELFPLAY_MCTS_TEMPERATURE = 1.0
+    SELFPLAY_MCTS_LATE_TEMPERATURE = 0.25
 
     MANUAL_START_CHECKPOINT = os.path.join(SELFPLAY_DIR, "champion.pt")
 
@@ -1985,7 +2223,12 @@ def main():
                                                                  checkpoint_every=WARMSTART_CHECKPOINT_EVERY,
                                                                  checkpoint_dir=WARMSTART_DIR,
                                                                  device=DEVICE,
-                                                                 max_moves_per_game=WARMSTART_MAX_MOVES)
+                                                                 max_moves_per_game=WARMSTART_MAX_MOVES,
+                                                                 use_mixed_rollout_prefix=WARMSTART_USE_MIXED_ROLLOUT_PREFIX,
+                                                                 prefix_rollout_max_moves=WARMSTART_PREFIX_ROLLOUT_MAX_MOVES,
+                                                                 prefix_rollout_prob=WARMSTART_PREFIX_ROLLOUT_PROB,
+                                                                 collect_all_heuristic_seats=WARMSTART_COLLECT_ALL_HEURISTIC_SEATS,
+                                                                 max_label_moves_after_prefix=WARMSTART_MAX_LABEL_MOVES_AFTER_PREFIX)
         start_checkpoint = final_ckpt
         print(f"Warm-start completed: {final_ckpt}", flush=True)
 
@@ -2007,7 +2250,11 @@ def main():
                                  positions_per_cycle=SELFPLAY_POSITIONS_PER_CYCLE,
                                  updates_per_cycle=SELFPLAY_UPDATES_PER_CYCLE,
                                  value_weight=SELFPLAY_VALUE_WEIGHT,
-                                 mcts_simulations=8)
+                                 mcts_simulations=128,
+                                 collect_all_current_model_mcts_seats=SELFPLAY_COLLECT_ALL_CURRENT_MODEL_MCTS_SEATS,
+                                 mcts_sample_until_move=SELFPLAY_MCTS_SAMPLE_UNTIL_MOVE,
+                                 mcts_temperature=SELFPLAY_MCTS_TEMPERATURE,
+                                 mcts_late_temperature=SELFPLAY_MCTS_LATE_TEMPERATURE)
 
 
 if __name__ == "__main__":

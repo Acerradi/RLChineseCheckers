@@ -76,6 +76,7 @@ class GameCore:
         self.move_count = 0
         self.move_times_ms: List[float] = []
         self.last_move: Optional[Dict[str, Any]] = None
+        self.last_move_by_colour: Dict[str, Dict[str, Any]] = {}
         self.turn_timeout_notice: Optional[str] = None
         self.scores: Dict[str, Dict[str, float]] = {}
         self.history: List[Dict[str, Any]] = []
@@ -275,6 +276,7 @@ class GameCore:
                           "colour": pl.colour,
                           "move_ms": move_ms}
         self.history.append(dict(self.last_move))
+        self.last_move_by_colour[pl.colour] = dict(self.last_move)
 
         adjudication_event = None
         if self.enable_training_adjudication:
@@ -286,6 +288,14 @@ class GameCore:
                                                                             before_progress=before_progress,
                                                                             after_progress=after_progress,
                                                                             was_forced=was_forced)
+
+        if self.status == "FINISHED":
+            self.compute_scores()
+            return {"ok": True,
+                    "status": "ADJUDICATED",
+                    "state": self.to_public_state(),
+                    "msg": self.adjudication_reason,
+                    "adjudication": adjudication_event}
 
         pl.status = self.check_player_status(pl.colour)
         if pl.status == "WIN":
@@ -304,14 +314,6 @@ class GameCore:
                         "status": "WIN",
                         "state": self.to_public_state(),
                         "msg": f"{winner.name} Wins, others Draw."}
-        if self.status == "FINISHED":
-            self.compute_scores()
-            return {"ok": True,
-                    "status": "ADJUDICATED",
-                    "state": self.to_public_state(),
-                    "msg": self.adjudication_reason,
-                    "adjudication": adjudication_event}
-
         self.advance_turn()
         self.compute_scores()
         return {"ok": True,
@@ -374,6 +376,7 @@ class GameCore:
                 "current_turn_colour": self.current_turn_colour(),
                 "turn_order": list(self.turn_order),
                 "last_move": self.last_move,
+                "last_move_by_colour": dict(self.last_move_by_colour),
                 "turn_timeout_notice": self.turn_timeout_notice,
 
                 # New training diagnostics

@@ -1,0 +1,420 @@
+[2026-05-04 10:43:49] GAME CREATED
+[2026-05-04 10:43:52] PLAYER JOINED: Harald as yellow
+[2026-05-04 10:43:58] PLAYER JOINED: Person as purple
+[2026-05-04 10:43:59] PLAYER START: Person (purple)
+[2026-05-04 10:44:00] PLAYER START: Harald (yellow)
+[2026-05-04 10:44:00] GAME START — turn order ['yellow', 'purple']
+[2026-05-04 10:44:00] MOVE 1: Harald (yellow) 24->47 [0.01ms]
+[2026-05-04 10:44:00] SCORE Harald (yellow): Final=191.7, Time=99.7, Moves(1)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-04 10:44:00] SCORE Person (purple): Final=0.0, Time=0.0, Moves(0)=0.0, Pins(0)=0.0, Dist=0.0
+[2026-05-04 10:44:01] MOVE 2: Person (purple) 108->106 [0.00ms]
+[2026-05-04 10:44:01] SCORE Harald (yellow): Final=191.7, Time=99.7, Moves(1)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-04 10:44:01] SCORE Person (purple): Final=191.3, Time=99.3, Moves(1)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-04 10:44:02] MOVE 3: Harald (yellow) 36->57 [0.01ms]
+[2026-05-04 10:44:02] SCORE Harald (yellow): Final=193.2, Time=99.2, Moves(2)=0.0, Pins(0)=0.0, Dist=94.0
+[2026-05-04 10:44:02] SCORE Person (purple): Final=191.3, Time=99.3, Moves(1)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-04 10:44:02] MOVE 4: Person (purple) 85->108 [0.00ms]
+[2026-05-04 10:44:02] SCORE Harald (yellow): Final=193.2, Time=99.2, Moves(2)=0.0, Pins(0)=0.0, Dist=94.0
+[2026-05-04 10:44:02] SCORE Person (purple): Final=190.5, Time=98.5, Moves(2)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-04 10:44:03] MOVE 5: Harald (yellow) 46->66 [0.00ms]
+[2026-05-04 10:44:03] SCORE Harald (yellow): Final=194.7, Time=98.7, Moves(3)=0.0, Pins(0)=0.0, Dist=96.0
+[2026-05-04 10:44:03] SCORE Person (purple): Final=190.5, Time=98.5, Moves(2)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-04 10:44:04] MOVE 6: Person (purple) 108->85 [0.01ms]
+[2026-05-04 10:44:04] SCORE Harald (yellow): Final=194.7, Time=98.7, Moves(3)=0.0, Pins(0)=0.0, Dist=96.0
+[2026-05-04 10:44:04] SCORE Person (purple): Final=189.8, Time=97.8, Moves(3)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-04 10:44:04] MOVE 7: Harald (yellow) 12->56 [0.00ms]
+[2026-05-04 10:44:04] SCORE Harald (yellow): Final=196.2, Time=98.2, Moves(4)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:04] SCORE Person (purple): Final=189.8, Time=97.8, Moves(3)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-04 10:44:04] MOVE 8: Person (purple) 85->108 [0.00ms]
+[2026-05-04 10:44:04] SCORE Harald (yellow): Final=196.2, Time=98.2, Moves(4)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:04] SCORE Person (purple): Final=189.5, Time=97.5, Moves(4)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-04 10:44:05] MOVE 9: Harald (yellow) 56->77 [0.00ms]
+[2026-05-04 10:44:05] SCORE Harald (yellow): Final=197.7, Time=97.7, Moves(5)=0.0, Pins(0)=0.0, Dist=100.0
+[2026-05-04 10:44:05] SCORE Person (purple): Final=189.5, Time=97.5, Moves(4)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-04 10:44:05] MOVE 10: Person (purple) 108->85 [0.00ms]
+[2026-05-04 10:44:05] SCORE Harald (yellow): Final=197.7, Time=97.7, Moves(5)=0.0, Pins(0)=0.0, Dist=100.0
+[2026-05-04 10:44:05] SCORE Person (purple): Final=189.3, Time=97.3, Moves(5)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-04 10:44:06] MOVE 11: Harald (yellow) 57->67 [0.00ms]
+[2026-05-04 10:44:06] SCORE Harald (yellow): Final=198.2, Time=97.2, Moves(6)=0.0, Pins(0)=0.0, Dist=101.0
+[2026-05-04 10:44:06] SCORE Person (purple): Final=189.3, Time=97.3, Moves(5)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-04 10:44:06] MOVE 12: Person (purple) 85->108 [0.00ms]
+[2026-05-04 10:44:06] SCORE Harald (yellow): Final=198.2, Time=97.2, Moves(6)=0.0, Pins(0)=0.0, Dist=101.0
+[2026-05-04 10:44:06] SCORE Person (purple): Final=189.0, Time=97.0, Moves(6)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-04 10:44:06] MOVE 13: Harald (yellow) 67->65 [0.00ms]
+[2026-05-04 10:44:06] SCORE Harald (yellow): Final=195.8, Time=96.8, Moves(7)=0.0, Pins(0)=0.0, Dist=99.0
+[2026-05-04 10:44:06] SCORE Person (purple): Final=189.0, Time=97.0, Moves(6)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-04 10:44:07] MOVE 14: Person (purple) 108->85 [0.01ms]
+[2026-05-04 10:44:07] SCORE Harald (yellow): Final=195.8, Time=96.8, Moves(7)=0.0, Pins(0)=0.0, Dist=99.0
+[2026-05-04 10:44:07] SCORE Person (purple): Final=188.7, Time=96.7, Moves(7)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-04 10:44:07] MOVE 15: Harald (yellow) 66->67 [0.00ms]
+[2026-05-04 10:44:07] SCORE Harald (yellow): Final=196.3, Time=96.3, Moves(8)=0.0, Pins(0)=0.0, Dist=100.0
+[2026-05-04 10:44:07] SCORE Person (purple): Final=188.7, Time=96.7, Moves(7)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-04 10:44:07] MOVE 16: Person (purple) 85->108 [0.00ms]
+[2026-05-04 10:44:07] SCORE Harald (yellow): Final=196.3, Time=96.3, Moves(8)=0.0, Pins(0)=0.0, Dist=100.0
+[2026-05-04 10:44:07] SCORE Person (purple): Final=188.4, Time=96.4, Moves(8)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-04 10:44:08] MOVE 17: Harald (yellow) 67->88 [0.00ms]
+[2026-05-04 10:44:08] SCORE Harald (yellow): Final=195.9, Time=95.9, Moves(9)=0.0, Pins(0)=0.0, Dist=100.0
+[2026-05-04 10:44:08] SCORE Person (purple): Final=188.4, Time=96.4, Moves(8)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-04 10:44:08] MOVE 18: Person (purple) 107->105 [0.00ms]
+[2026-05-04 10:44:08] SCORE Harald (yellow): Final=195.9, Time=95.9, Moves(9)=0.0, Pins(0)=0.0, Dist=100.0
+[2026-05-04 10:44:08] SCORE Person (purple): Final=190.1, Time=96.1, Moves(9)=0.0, Pins(0)=0.0, Dist=94.0
+[2026-05-04 10:44:09] MOVE 19: Harald (yellow) 10->75 [0.00ms]
+[2026-05-04 10:44:09] SCORE Harald (yellow): Final=199.4, Time=95.4, Moves(10)=0.0, Pins(0)=0.0, Dist=104.0
+[2026-05-04 10:44:09] SCORE Person (purple): Final=190.1, Time=96.1, Moves(9)=0.0, Pins(0)=0.0, Dist=94.0
+[2026-05-04 10:44:09] MOVE 20: Person (purple) 105->113 [0.00ms]
+[2026-05-04 10:44:09] SCORE Harald (yellow): Final=199.4, Time=95.4, Moves(10)=0.0, Pins(0)=0.0, Dist=104.0
+[2026-05-04 10:44:09] SCORE Person (purple): Final=189.8, Time=95.8, Moves(10)=0.0, Pins(0)=0.0, Dist=94.0
+[2026-05-04 10:44:09] MOVE 21: Harald (yellow) 77->100 [0.00ms]
+[2026-05-04 10:44:09] SCORE Harald (yellow): Final=199.1, Time=95.1, Moves(11)=0.0, Pins(0)=0.0, Dist=104.0
+[2026-05-04 10:44:09] SCORE Person (purple): Final=189.8, Time=95.8, Moves(10)=0.0, Pins(0)=0.0, Dist=94.0
+[2026-05-04 10:44:10] MOVE 22: Person (purple) 109->116 [0.00ms]
+[2026-05-04 10:44:10] SCORE Harald (yellow): Final=199.1, Time=95.1, Moves(11)=0.0, Pins(0)=0.0, Dist=104.0
+[2026-05-04 10:44:10] SCORE Person (purple): Final=193.4, Time=95.4, Moves(11)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:10] MOVE 23: Harald (yellow) 35->10 [0.00ms]
+[2026-05-04 10:44:10] SCORE Harald (yellow): Final=196.7, Time=94.7, Moves(12)=0.0, Pins(0)=0.0, Dist=102.0
+[2026-05-04 10:44:10] SCORE Person (purple): Final=193.4, Time=95.4, Moves(11)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:10] MOVE 24: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:10] SCORE Harald (yellow): Final=196.7, Time=94.7, Moves(12)=0.0, Pins(0)=0.0, Dist=102.0
+[2026-05-04 10:44:10] SCORE Person (purple): Final=193.1, Time=95.1, Moves(12)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:11] MOVE 25: Harald (yellow) 10->56 [0.00ms]
+[2026-05-04 10:44:11] SCORE Harald (yellow): Final=200.3, Time=94.3, Moves(13)=0.0, Pins(0)=0.0, Dist=106.0
+[2026-05-04 10:44:11] SCORE Person (purple): Final=193.1, Time=95.1, Moves(12)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:11] MOVE 26: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:11] SCORE Harald (yellow): Final=200.3, Time=94.3, Moves(13)=0.0, Pins(0)=0.0, Dist=106.0
+[2026-05-04 10:44:11] SCORE Person (purple): Final=192.7, Time=94.7, Moves(13)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:12] MOVE 27: Harald (yellow) 56->66 [0.00ms]
+[2026-05-04 10:44:12] SCORE Harald (yellow): Final=200.9, Time=93.9, Moves(14)=0.0, Pins(0)=0.0, Dist=107.0
+[2026-05-04 10:44:12] SCORE Person (purple): Final=192.7, Time=94.7, Moves(13)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:12] MOVE 28: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:12] SCORE Harald (yellow): Final=200.9, Time=93.9, Moves(14)=0.0, Pins(0)=0.0, Dist=107.0
+[2026-05-04 10:44:12] SCORE Person (purple): Final=192.3, Time=94.3, Moves(14)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:12] MOVE 29: Harald (yellow) 13->99 [0.00ms]
+[2026-05-04 10:44:12] SCORE Harald (yellow): Final=202.6, Time=93.6, Moves(15)=0.0, Pins(0)=0.0, Dist=109.0
+[2026-05-04 10:44:12] SCORE Person (purple): Final=192.3, Time=94.3, Moves(14)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:13] MOVE 30: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:13] SCORE Harald (yellow): Final=202.6, Time=93.6, Moves(15)=0.0, Pins(0)=0.0, Dist=109.0
+[2026-05-04 10:44:13] SCORE Person (purple): Final=191.9, Time=93.9, Moves(15)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:13] MOVE 31: Harald (yellow) 66->77 [0.00ms]
+[2026-05-04 10:44:13] SCORE Harald (yellow): Final=203.2, Time=93.2, Moves(16)=0.0, Pins(0)=0.0, Dist=110.0
+[2026-05-04 10:44:13] SCORE Person (purple): Final=191.9, Time=93.9, Moves(15)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:13] MOVE 32: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:13] SCORE Harald (yellow): Final=203.2, Time=93.2, Moves(16)=0.0, Pins(0)=0.0, Dist=110.0
+[2026-05-04 10:44:13] SCORE Person (purple): Final=191.6, Time=93.6, Moves(16)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:14] MOVE 33: Harald (yellow) 77->89 [0.00ms]
+[2026-05-04 10:44:14] SCORE Harald (yellow): Final=203.8, Time=92.8, Moves(17)=0.0, Pins(0)=0.0, Dist=111.0
+[2026-05-04 10:44:14] SCORE Person (purple): Final=191.6, Time=93.6, Moves(16)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:14] MOVE 34: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:14] SCORE Harald (yellow): Final=203.8, Time=92.8, Moves(17)=0.0, Pins(0)=0.0, Dist=111.0
+[2026-05-04 10:44:14] SCORE Person (purple): Final=191.2, Time=93.2, Moves(17)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:14] MOVE 35: Harald (yellow) 89->101 [0.00ms]
+[2026-05-04 10:44:14] SCORE Harald (yellow): Final=203.5, Time=92.5, Moves(18)=0.0, Pins(0)=0.0, Dist=111.0
+[2026-05-04 10:44:14] SCORE Person (purple): Final=191.2, Time=93.2, Moves(17)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:15] MOVE 36: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:15] SCORE Harald (yellow): Final=203.5, Time=92.5, Moves(18)=0.0, Pins(0)=0.0, Dist=111.0
+[2026-05-04 10:44:15] SCORE Person (purple): Final=190.8, Time=92.8, Moves(18)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:15] MOVE 37: Harald (yellow) 101->76 [0.00ms]
+[2026-05-04 10:44:15] SCORE Harald (yellow): Final=201.1, Time=92.1, Moves(19)=0.0, Pins(0)=0.0, Dist=109.0
+[2026-05-04 10:44:15] SCORE Person (purple): Final=190.8, Time=92.8, Moves(18)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:16] MOVE 38: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:16] SCORE Harald (yellow): Final=201.1, Time=92.1, Moves(19)=0.0, Pins(0)=0.0, Dist=109.0
+[2026-05-04 10:44:16] SCORE Person (purple): Final=190.4, Time=92.4, Moves(19)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:16] MOVE 39: Harald (yellow) 65->86 [0.00ms]
+[2026-05-04 10:44:16] SCORE Harald (yellow): Final=200.8, Time=91.8, Moves(20)=0.0, Pins(0)=0.0, Dist=109.0
+[2026-05-04 10:44:16] SCORE Person (purple): Final=190.4, Time=92.4, Moves(19)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:16] MOVE 40: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:16] SCORE Harald (yellow): Final=200.8, Time=91.8, Moves(20)=0.0, Pins(0)=0.0, Dist=109.0
+[2026-05-04 10:44:16] SCORE Person (purple): Final=190.0, Time=92.0, Moves(20)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:17] MOVE 41: Harald (yellow) 23->10 [0.00ms]
+[2026-05-04 10:44:17] SCORE Harald (yellow): Final=199.4, Time=91.4, Moves(21)=0.0, Pins(0)=0.0, Dist=108.0
+[2026-05-04 10:44:17] SCORE Person (purple): Final=190.0, Time=92.0, Moves(20)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:17] MOVE 42: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:17] SCORE Harald (yellow): Final=199.4, Time=91.4, Moves(21)=0.0, Pins(0)=0.0, Dist=108.0
+[2026-05-04 10:44:17] SCORE Person (purple): Final=189.6, Time=91.6, Moves(21)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:17] MOVE 43: Harald (yellow) 10->56 [0.00ms]
+[2026-05-04 10:44:17] SCORE Harald (yellow): Final=203.1, Time=91.1, Moves(22)=0.0, Pins(0)=0.0, Dist=112.0
+[2026-05-04 10:44:17] SCORE Person (purple): Final=189.6, Time=91.6, Moves(21)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:18] MOVE 44: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:18] SCORE Harald (yellow): Final=203.1, Time=91.1, Moves(22)=0.0, Pins(0)=0.0, Dist=112.0
+[2026-05-04 10:44:18] SCORE Person (purple): Final=189.2, Time=91.2, Moves(22)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:18] MOVE 45: Harald (yellow) 56->66 [0.00ms]
+[2026-05-04 10:44:18] SCORE Harald (yellow): Final=203.8, Time=90.8, Moves(23)=0.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:18] SCORE Person (purple): Final=189.2, Time=91.2, Moves(22)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:19] MOVE 46: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:19] SCORE Harald (yellow): Final=203.8, Time=90.8, Moves(23)=0.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:19] SCORE Person (purple): Final=188.7, Time=90.7, Moves(23)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:19] MOVE 47: Harald (yellow) 66->89 [0.00ms]
+[2026-05-04 10:44:19] SCORE Harald (yellow): Final=205.5, Time=90.5, Moves(24)=0.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:19] SCORE Person (purple): Final=188.7, Time=90.7, Moves(23)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:19] MOVE 48: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:19] SCORE Harald (yellow): Final=205.5, Time=90.5, Moves(24)=0.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:19] SCORE Person (purple): Final=188.3, Time=90.3, Moves(24)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:20] MOVE 49: Harald (yellow) 89->66 [0.00ms]
+[2026-05-04 10:44:20] SCORE Harald (yellow): Final=203.2, Time=90.2, Moves(25)=0.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:20] SCORE Person (purple): Final=188.3, Time=90.3, Moves(24)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:20] MOVE 50: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:20] SCORE Harald (yellow): Final=203.2, Time=90.2, Moves(25)=0.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:20] SCORE Person (purple): Final=187.8, Time=89.8, Moves(25)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:20] MOVE 51: Harald (yellow) 66->89 [0.00ms]
+[2026-05-04 10:44:20] SCORE Harald (yellow): Final=204.9, Time=89.9, Moves(26)=0.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:20] SCORE Person (purple): Final=187.8, Time=89.8, Moves(25)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:21] MOVE 52: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:21] SCORE Harald (yellow): Final=204.9, Time=89.9, Moves(26)=0.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:21] SCORE Person (purple): Final=187.4, Time=89.4, Moves(26)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:21] MOVE 53: Harald (yellow) 89->66 [0.00ms]
+[2026-05-04 10:44:21] SCORE Harald (yellow): Final=202.6, Time=89.6, Moves(27)=0.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:21] SCORE Person (purple): Final=187.4, Time=89.4, Moves(26)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:22] MOVE 54: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:22] SCORE Harald (yellow): Final=202.6, Time=89.6, Moves(27)=0.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:22] SCORE Person (purple): Final=186.9, Time=88.9, Moves(27)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:22] MOVE 55: Harald (yellow) 66->89 [0.00ms]
+[2026-05-04 10:44:22] SCORE Harald (yellow): Final=204.4, Time=89.4, Moves(28)=0.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:22] SCORE Person (purple): Final=186.9, Time=88.9, Moves(27)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:22] MOVE 56: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:22] SCORE Harald (yellow): Final=204.4, Time=89.4, Moves(28)=0.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:22] SCORE Person (purple): Final=186.4, Time=88.4, Moves(28)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:23] MOVE 57: Harald (yellow) 89->66 [0.00ms]
+[2026-05-04 10:44:23] SCORE Harald (yellow): Final=202.1, Time=89.1, Moves(29)=0.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:23] SCORE Person (purple): Final=186.4, Time=88.4, Moves(28)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:23] MOVE 58: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:23] SCORE Harald (yellow): Final=202.1, Time=89.1, Moves(29)=0.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:23] SCORE Person (purple): Final=185.9, Time=87.9, Moves(29)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:23] MOVE 59: Harald (yellow) 66->89 [0.00ms]
+[2026-05-04 10:44:23] SCORE Harald (yellow): Final=203.9, Time=88.9, Moves(30)=0.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:23] SCORE Person (purple): Final=185.9, Time=87.9, Moves(29)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:24] MOVE 60: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:24] SCORE Harald (yellow): Final=203.9, Time=88.9, Moves(30)=0.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:24] SCORE Person (purple): Final=185.4, Time=87.4, Moves(30)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:24] MOVE 61: Harald (yellow) 89->66 [0.00ms]
+[2026-05-04 10:44:24] SCORE Harald (yellow): Final=201.6, Time=88.6, Moves(31)=0.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:24] SCORE Person (purple): Final=185.4, Time=87.4, Moves(30)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:25] MOVE 62: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:25] SCORE Harald (yellow): Final=201.6, Time=88.6, Moves(31)=0.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:25] SCORE Person (purple): Final=184.9, Time=86.9, Moves(31)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:25] MOVE 63: Harald (yellow) 66->89 [0.00ms]
+[2026-05-04 10:44:25] SCORE Harald (yellow): Final=203.3, Time=88.3, Moves(32)=0.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:25] SCORE Person (purple): Final=184.9, Time=86.9, Moves(31)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:25] MOVE 64: Person (purple) 113->118 [0.01ms]
+[2026-05-04 10:44:25] SCORE Harald (yellow): Final=203.3, Time=88.3, Moves(32)=0.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:25] SCORE Person (purple): Final=184.5, Time=86.5, Moves(32)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:26] MOVE 65: Harald (yellow) 89->66 [0.00ms]
+[2026-05-04 10:44:26] SCORE Harald (yellow): Final=201.0, Time=88.0, Moves(33)=0.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:26] SCORE Person (purple): Final=184.5, Time=86.5, Moves(32)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:26] MOVE 66: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:26] SCORE Harald (yellow): Final=201.0, Time=88.0, Moves(33)=0.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:26] SCORE Person (purple): Final=184.0, Time=86.0, Moves(33)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:26] MOVE 67: Harald (yellow) 66->89 [0.00ms]
+[2026-05-04 10:44:26] SCORE Harald (yellow): Final=202.8, Time=87.7, Moves(34)=0.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:26] SCORE Person (purple): Final=184.0, Time=86.0, Moves(33)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:27] MOVE 68: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:27] SCORE Harald (yellow): Final=202.8, Time=87.7, Moves(34)=0.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:27] SCORE Person (purple): Final=183.5, Time=85.5, Moves(34)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:27] MOVE 69: Harald (yellow) 89->66 [0.00ms]
+[2026-05-04 10:44:27] SCORE Harald (yellow): Final=200.5, Time=87.5, Moves(35)=0.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:27] SCORE Person (purple): Final=183.5, Time=85.5, Moves(34)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:28] MOVE 70: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:28] SCORE Harald (yellow): Final=200.5, Time=87.5, Moves(35)=0.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:28] SCORE Person (purple): Final=183.1, Time=85.0, Moves(35)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:28] MOVE 71: Harald (yellow) 66->89 [0.00ms]
+[2026-05-04 10:44:28] SCORE Harald (yellow): Final=202.3, Time=87.2, Moves(36)=0.1, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:28] SCORE Person (purple): Final=183.1, Time=85.0, Moves(35)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:28] MOVE 72: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:28] SCORE Harald (yellow): Final=202.3, Time=87.2, Moves(36)=0.1, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:28] SCORE Person (purple): Final=182.6, Time=84.5, Moves(36)=0.1, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:29] MOVE 73: Harald (yellow) 89->66 [0.00ms]
+[2026-05-04 10:44:29] SCORE Harald (yellow): Final=200.1, Time=87.0, Moves(37)=0.1, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:29] SCORE Person (purple): Final=182.6, Time=84.5, Moves(36)=0.1, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:29] MOVE 74: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:29] SCORE Harald (yellow): Final=200.1, Time=87.0, Moves(37)=0.1, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:29] SCORE Person (purple): Final=182.2, Time=84.0, Moves(37)=0.1, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:29] MOVE 75: Harald (yellow) 66->89 [0.00ms]
+[2026-05-04 10:44:29] SCORE Harald (yellow): Final=202.0, Time=86.7, Moves(38)=0.2, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:29] SCORE Person (purple): Final=182.2, Time=84.0, Moves(37)=0.1, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:30] MOVE 76: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:30] SCORE Harald (yellow): Final=202.0, Time=86.7, Moves(38)=0.2, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:30] SCORE Person (purple): Final=181.7, Time=83.5, Moves(38)=0.2, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:31] MOVE 77: Harald (yellow) 89->66 [0.00ms]
+[2026-05-04 10:44:31] SCORE Harald (yellow): Final=199.3, Time=86.0, Moves(39)=0.3, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:31] SCORE Person (purple): Final=181.7, Time=83.5, Moves(38)=0.2, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:31] MOVE 78: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:31] SCORE Harald (yellow): Final=199.3, Time=86.0, Moves(39)=0.3, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:31] SCORE Person (purple): Final=181.3, Time=83.0, Moves(39)=0.3, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:31] MOVE 79: Harald (yellow) 66->89 [0.00ms]
+[2026-05-04 10:44:31] SCORE Harald (yellow): Final=201.2, Time=85.7, Moves(40)=0.5, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:31] SCORE Person (purple): Final=181.3, Time=83.0, Moves(39)=0.3, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:32] MOVE 80: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:32] SCORE Harald (yellow): Final=201.2, Time=85.7, Moves(40)=0.5, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:32] SCORE Person (purple): Final=180.9, Time=82.5, Moves(40)=0.5, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:33] MOVE 81: Harald (yellow) 89->66 [0.00ms]
+[2026-05-04 10:44:33] SCORE Harald (yellow): Final=198.6, Time=85.0, Moves(41)=0.6, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:33] SCORE Person (purple): Final=180.9, Time=82.5, Moves(40)=0.5, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:33] MOVE 82: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:33] SCORE Harald (yellow): Final=198.6, Time=85.0, Moves(41)=0.6, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:33] SCORE Person (purple): Final=180.6, Time=82.0, Moves(41)=0.6, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:34] MOVE 83: Harald (yellow) 66->89 [0.00ms]
+[2026-05-04 10:44:34] SCORE Harald (yellow): Final=200.0, Time=84.2, Moves(42)=0.8, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:34] SCORE Person (purple): Final=180.6, Time=82.0, Moves(41)=0.6, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:35] MOVE 84: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:35] SCORE Harald (yellow): Final=200.0, Time=84.2, Moves(42)=0.8, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:35] SCORE Person (purple): Final=180.2, Time=81.4, Moves(42)=0.8, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:35] MOVE 85: Harald (yellow) 89->66 [0.00ms]
+[2026-05-04 10:44:35] SCORE Harald (yellow): Final=197.4, Time=83.5, Moves(43)=0.9, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:35] SCORE Person (purple): Final=180.2, Time=81.4, Moves(42)=0.8, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:36] MOVE 86: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:36] SCORE Harald (yellow): Final=197.4, Time=83.5, Moves(43)=0.9, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:36] SCORE Person (purple): Final=179.8, Time=80.9, Moves(43)=0.9, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:36] MOVE 87: Harald (yellow) 66->89 [0.00ms]
+[2026-05-04 10:44:36] SCORE Harald (yellow): Final=199.2, Time=83.2, Moves(44)=1.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:36] SCORE Person (purple): Final=179.8, Time=80.9, Moves(43)=0.9, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:37] MOVE 88: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:37] SCORE Harald (yellow): Final=199.2, Time=83.2, Moves(44)=1.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:37] SCORE Person (purple): Final=179.3, Time=80.4, Moves(44)=1.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:37] MOVE 89: Harald (yellow) 89->66 [0.00ms]
+[2026-05-04 10:44:37] SCORE Harald (yellow): Final=197.0, Time=83.0, Moves(45)=1.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:37] SCORE Person (purple): Final=179.3, Time=80.4, Moves(44)=1.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:37] MOVE 90: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:37] SCORE Harald (yellow): Final=197.0, Time=83.0, Moves(45)=1.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:37] SCORE Person (purple): Final=178.9, Time=79.9, Moves(45)=1.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:38] MOVE 91: Harald (yellow) 66->89 [0.00ms]
+[2026-05-04 10:44:38] SCORE Harald (yellow): Final=198.7, Time=82.7, Moves(46)=1.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:38] SCORE Person (purple): Final=178.9, Time=79.9, Moves(45)=1.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:38] MOVE 92: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:38] SCORE Harald (yellow): Final=198.7, Time=82.7, Moves(46)=1.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:38] SCORE Person (purple): Final=178.4, Time=79.4, Moves(46)=1.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:38] MOVE 93: Harald (yellow) 89->66 [0.00ms]
+[2026-05-04 10:44:38] SCORE Harald (yellow): Final=196.4, Time=82.4, Moves(47)=1.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:38] SCORE Person (purple): Final=178.4, Time=79.4, Moves(46)=1.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:39] MOVE 94: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:39] SCORE Harald (yellow): Final=196.4, Time=82.4, Moves(47)=1.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:39] SCORE Person (purple): Final=177.9, Time=78.9, Moves(47)=1.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:39] MOVE 95: Harald (yellow) 66->89 [0.00ms]
+[2026-05-04 10:44:39] SCORE Harald (yellow): Final=198.1, Time=82.2, Moves(48)=1.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:39] SCORE Person (purple): Final=177.9, Time=78.9, Moves(47)=1.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:40] MOVE 96: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:40] SCORE Harald (yellow): Final=198.1, Time=82.2, Moves(48)=1.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:40] SCORE Person (purple): Final=177.4, Time=78.4, Moves(48)=1.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:40] MOVE 97: Harald (yellow) 89->66 [0.00ms]
+[2026-05-04 10:44:40] SCORE Harald (yellow): Final=195.9, Time=81.9, Moves(49)=1.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:40] SCORE Person (purple): Final=177.4, Time=78.4, Moves(48)=1.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:40] MOVE 98: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:40] SCORE Harald (yellow): Final=195.9, Time=81.9, Moves(49)=1.0, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:40] SCORE Person (purple): Final=176.9, Time=78.0, Moves(49)=1.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:41] MOVE 99: Harald (yellow) 66->89 [0.00ms]
+[2026-05-04 10:44:41] SCORE Harald (yellow): Final=197.5, Time=81.6, Moves(50)=1.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:41] SCORE Person (purple): Final=176.9, Time=78.0, Moves(49)=1.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:41] MOVE 100: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:41] SCORE Harald (yellow): Final=197.5, Time=81.6, Moves(50)=1.0, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:41] SCORE Person (purple): Final=176.5, Time=77.5, Moves(50)=1.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:41] MOVE 101: Harald (yellow) 89->66 [0.00ms]
+[2026-05-04 10:44:41] SCORE Harald (yellow): Final=195.2, Time=81.3, Moves(51)=0.9, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:41] SCORE Person (purple): Final=176.5, Time=77.5, Moves(50)=1.0, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:42] MOVE 102: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:42] SCORE Harald (yellow): Final=195.2, Time=81.3, Moves(51)=0.9, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:42] SCORE Person (purple): Final=176.0, Time=77.1, Moves(51)=0.9, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:42] MOVE 103: Harald (yellow) 66->89 [0.00ms]
+[2026-05-04 10:44:42] SCORE Harald (yellow): Final=196.9, Time=80.9, Moves(52)=0.9, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:42] SCORE Person (purple): Final=176.0, Time=77.1, Moves(51)=0.9, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:43] MOVE 104: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:43] SCORE Harald (yellow): Final=196.9, Time=80.9, Moves(52)=0.9, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:43] SCORE Person (purple): Final=175.6, Time=76.7, Moves(52)=0.9, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:43] MOVE 105: Harald (yellow) 89->66 [0.00ms]
+[2026-05-04 10:44:43] SCORE Harald (yellow): Final=194.5, Time=80.6, Moves(53)=0.9, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:43] SCORE Person (purple): Final=175.6, Time=76.7, Moves(52)=0.9, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:43] MOVE 106: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:43] SCORE Harald (yellow): Final=194.5, Time=80.6, Moves(53)=0.9, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:43] SCORE Person (purple): Final=175.1, Time=76.2, Moves(53)=0.9, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:44] MOVE 107: Harald (yellow) 66->89 [0.00ms]
+[2026-05-04 10:44:44] SCORE Harald (yellow): Final=196.2, Time=80.3, Moves(54)=0.9, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:44] SCORE Person (purple): Final=175.1, Time=76.2, Moves(53)=0.9, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:44] MOVE 108: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:44] SCORE Harald (yellow): Final=196.2, Time=80.3, Moves(54)=0.9, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:44] SCORE Person (purple): Final=174.6, Time=75.8, Moves(54)=0.9, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:44] MOVE 109: Harald (yellow) 89->66 [0.00ms]
+[2026-05-04 10:44:44] SCORE Harald (yellow): Final=193.9, Time=80.0, Moves(55)=0.9, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:44] SCORE Person (purple): Final=174.6, Time=75.8, Moves(54)=0.9, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:45] MOVE 110: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:45] SCORE Harald (yellow): Final=193.9, Time=80.0, Moves(55)=0.9, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:45] SCORE Person (purple): Final=174.1, Time=75.3, Moves(55)=0.9, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:45] MOVE 111: Harald (yellow) 66->89 [0.01ms]
+[2026-05-04 10:44:45] SCORE Harald (yellow): Final=195.5, Time=79.7, Moves(56)=0.8, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:45] SCORE Person (purple): Final=174.1, Time=75.3, Moves(55)=0.9, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:46] MOVE 112: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:46] SCORE Harald (yellow): Final=195.5, Time=79.7, Moves(56)=0.8, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:46] SCORE Person (purple): Final=173.7, Time=74.8, Moves(56)=0.8, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:46] MOVE 113: Harald (yellow) 89->66 [0.00ms]
+[2026-05-04 10:44:46] SCORE Harald (yellow): Final=193.2, Time=79.4, Moves(57)=0.8, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:46] SCORE Person (purple): Final=173.7, Time=74.8, Moves(56)=0.8, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:46] MOVE 114: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:46] SCORE Harald (yellow): Final=193.2, Time=79.4, Moves(57)=0.8, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:46] SCORE Person (purple): Final=173.1, Time=74.3, Moves(57)=0.8, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:47] MOVE 115: Harald (yellow) 66->89 [0.00ms]
+[2026-05-04 10:44:47] SCORE Harald (yellow): Final=194.9, Time=79.1, Moves(58)=0.8, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:47] SCORE Person (purple): Final=173.1, Time=74.3, Moves(57)=0.8, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:47] MOVE 116: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:47] SCORE Harald (yellow): Final=194.9, Time=79.1, Moves(58)=0.8, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:47] SCORE Person (purple): Final=172.6, Time=73.9, Moves(58)=0.8, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:48] MOVE 117: Harald (yellow) 89->66 [0.01ms]
+[2026-05-04 10:44:48] SCORE Harald (yellow): Final=192.6, Time=78.8, Moves(59)=0.7, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:48] SCORE Person (purple): Final=172.6, Time=73.9, Moves(58)=0.8, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:48] MOVE 118: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:48] SCORE Harald (yellow): Final=192.6, Time=78.8, Moves(59)=0.7, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:48] SCORE Person (purple): Final=172.2, Time=73.4, Moves(59)=0.7, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:48] MOVE 119: Harald (yellow) 66->89 [0.01ms]
+[2026-05-04 10:44:48] SCORE Harald (yellow): Final=194.2, Time=78.5, Moves(60)=0.7, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:48] SCORE Person (purple): Final=172.2, Time=73.4, Moves(59)=0.7, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:49] MOVE 120: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:49] SCORE Harald (yellow): Final=194.2, Time=78.5, Moves(60)=0.7, Pins(0)=0.0, Dist=115.0
+[2026-05-04 10:44:49] SCORE Person (purple): Final=171.7, Time=73.0, Moves(60)=0.7, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:49] MOVE 121: Harald (yellow) 89->66 [0.01ms]
+[2026-05-04 10:44:49] SCORE Harald (yellow): Final=191.9, Time=78.2, Moves(61)=0.7, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:49] SCORE Person (purple): Final=171.7, Time=73.0, Moves(60)=0.7, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:49] MOVE 122: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:49] SCORE Harald (yellow): Final=191.9, Time=78.2, Moves(61)=0.7, Pins(0)=0.0, Dist=113.0
+[2026-05-04 10:44:49] SCORE Person (purple): Final=171.3, Time=72.6, Moves(61)=0.7, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:50] MOVE 123: Harald (yellow) 66->65 [0.00ms]
+[2026-05-04 10:44:50] SCORE Harald (yellow): Final=190.5, Time=77.9, Moves(62)=0.6, Pins(0)=0.0, Dist=112.0
+[2026-05-04 10:44:50] SCORE Person (purple): Final=171.3, Time=72.6, Moves(61)=0.7, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:50] MOVE 124: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:50] SCORE Harald (yellow): Final=190.5, Time=77.9, Moves(62)=0.6, Pins(0)=0.0, Dist=112.0
+[2026-05-04 10:44:50] SCORE Person (purple): Final=170.8, Time=72.2, Moves(62)=0.6, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:51] MOVE 125: Harald (yellow) 76->101 [0.00ms]
+[2026-05-04 10:44:51] SCORE Harald (yellow): Final=192.2, Time=77.5, Moves(63)=0.6, Pins(0)=0.0, Dist=114.0
+[2026-05-04 10:44:51] SCORE Person (purple): Final=170.8, Time=72.2, Moves(62)=0.6, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:51] MOVE 126: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:51] SCORE Harald (yellow): Final=192.2, Time=77.5, Moves(63)=0.6, Pins(0)=0.0, Dist=114.0
+[2026-05-04 10:44:51] SCORE Person (purple): Final=170.3, Time=71.7, Moves(63)=0.6, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:51] MOVE 127: Harald (yellow) 101->76 [0.00ms]
+[2026-05-04 10:44:51] SCORE Harald (yellow): Final=189.8, Time=77.2, Moves(64)=0.6, Pins(0)=0.0, Dist=112.0
+[2026-05-04 10:44:51] SCORE Person (purple): Final=170.3, Time=71.7, Moves(63)=0.6, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:52] MOVE 128: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:52] SCORE Harald (yellow): Final=189.8, Time=77.2, Moves(64)=0.6, Pins(0)=0.0, Dist=112.0
+[2026-05-04 10:44:52] SCORE Person (purple): Final=169.8, Time=71.2, Moves(64)=0.6, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:52] MOVE 129: Harald (yellow) 76->101 [0.00ms]
+[2026-05-04 10:44:52] SCORE Harald (yellow): Final=191.5, Time=76.9, Moves(65)=0.5, Pins(0)=0.0, Dist=114.0
+[2026-05-04 10:44:52] SCORE Person (purple): Final=169.8, Time=71.2, Moves(64)=0.6, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:53] MOVE 130: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:53] SCORE Harald (yellow): Final=191.5, Time=76.9, Moves(65)=0.5, Pins(0)=0.0, Dist=114.0
+[2026-05-04 10:44:53] SCORE Person (purple): Final=169.3, Time=70.8, Moves(65)=0.5, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:53] MOVE 131: Harald (yellow) 101->76 [0.00ms]
+[2026-05-04 10:44:53] SCORE Harald (yellow): Final=189.2, Time=76.7, Moves(66)=0.5, Pins(0)=0.0, Dist=112.0
+[2026-05-04 10:44:53] SCORE Person (purple): Final=169.3, Time=70.8, Moves(65)=0.5, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:53] MOVE 132: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:53] SCORE Harald (yellow): Final=189.2, Time=76.7, Moves(66)=0.5, Pins(0)=0.0, Dist=112.0
+[2026-05-04 10:44:53] SCORE Person (purple): Final=168.8, Time=70.3, Moves(66)=0.5, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:54] MOVE 133: Harald (yellow) 76->101 [0.00ms]
+[2026-05-04 10:44:54] SCORE Harald (yellow): Final=190.9, Time=76.4, Moves(67)=0.5, Pins(0)=0.0, Dist=114.0
+[2026-05-04 10:44:54] SCORE Person (purple): Final=168.8, Time=70.3, Moves(66)=0.5, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:54] MOVE 134: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:54] SCORE Harald (yellow): Final=190.9, Time=76.4, Moves(67)=0.5, Pins(0)=0.0, Dist=114.0
+[2026-05-04 10:44:54] SCORE Person (purple): Final=168.2, Time=69.8, Moves(67)=0.5, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:55] MOVE 135: Harald (yellow) 101->76 [0.00ms]
+[2026-05-04 10:44:55] SCORE Harald (yellow): Final=188.1, Time=75.7, Moves(68)=0.4, Pins(0)=0.0, Dist=112.0
+[2026-05-04 10:44:55] SCORE Person (purple): Final=168.2, Time=69.8, Moves(67)=0.5, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:55] MOVE 136: Person (purple) 113->118 [0.00ms]
+[2026-05-04 10:44:55] SCORE Harald (yellow): Final=188.1, Time=75.7, Moves(68)=0.4, Pins(0)=0.0, Dist=112.0
+[2026-05-04 10:44:55] SCORE Person (purple): Final=167.7, Time=69.2, Moves(68)=0.4, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:56] MOVE 137: Harald (yellow) 76->101 [0.00ms]
+[2026-05-04 10:44:56] SCORE Harald (yellow): Final=189.3, Time=74.9, Moves(69)=0.4, Pins(0)=0.0, Dist=114.0
+[2026-05-04 10:44:56] SCORE Person (purple): Final=167.7, Time=69.2, Moves(68)=0.4, Pins(0)=0.0, Dist=98.0
+[2026-05-04 10:44:57] MOVE 138: Person (purple) 118->113 [0.00ms]
+[2026-05-04 10:44:57] SCORE Harald (yellow): Final=189.3, Time=74.9, Moves(69)=0.4, Pins(0)=0.0, Dist=114.0
+[2026-05-04 10:44:57] SCORE Person (purple): Final=167.1, Time=68.7, Moves(69)=0.4, Pins(0)=0.0, Dist=98.0

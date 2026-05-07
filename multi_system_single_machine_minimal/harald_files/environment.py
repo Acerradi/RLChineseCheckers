@@ -3,7 +3,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any, Dict, List, Mapping, Optional, Tuple
 
-from .core import Action, GameCore, make_observation
+try:
+    from .core import Action, GameCore, make_observation
+except ImportError:
+    from core import Action, GameCore, make_observation
 
 
 @dataclass

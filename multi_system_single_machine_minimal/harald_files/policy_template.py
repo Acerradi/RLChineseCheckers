@@ -34,6 +34,20 @@ ZONE_TO_IDX = {z: i for i, z in enumerate(ZONE_TYPES)}
 OCC_TO_IDX = {o: i for i, o in enumerate(OCCUPANT_TYPES)}
 
 
+def last_move_for_colour(state: Dict[str, Any], colour: str) -> Optional[Dict[str, Any]]:
+    by_colour = state.get("last_move_by_colour", {})
+    if isinstance(by_colour, dict):
+        own_move = by_colour.get(colour)
+        if own_move is not None:
+            return own_move
+
+    # Backward compatibility for live servers that only expose last_move.
+    last_move = state.get("last_move")
+    if last_move is not None and last_move.get("colour") == colour:
+        return last_move
+    return None
+
+
 @dataclass
 class GraphState:
     x: torch.Tensor
@@ -111,6 +125,9 @@ class BoardGraphBuilder:
         homes = self._home_cells(colour)
         return min(axial_dist(here, home) for home in homes)
 
+    def _last_move_for_colour(self, state: Dict[str, Any], colour: str) -> Optional[Dict[str, Any]]:
+        return last_move_for_colour(state, colour)
+
     def _goal_zone_depth(self, idx: int, colour: str) -> int:
         here = self.board.cells[idx]
         homes = self._home_cells(colour)
@@ -179,7 +196,7 @@ class BoardGraphBuilder:
         legal_actions: List[Tuple[int, int, int]] = []
         action_feature_rows: List[List[float]] = []
 
-        last_move = state.get("last_move")
+        last_move = self._last_move_for_colour(state, controlled_colour)
         last_from = int(last_move.get("from", -1)) if last_move is not None else -1
         last_to = int(last_move.get("to", -1)) if last_move is not None else -1
 
@@ -281,7 +298,7 @@ class HeuristicPolicy(BasePolicy):
         target_idxs = self.board.axial_of_colour(target_colour)
         return [self.board.cells[i] for i in target_idxs]
 
-    def _min_dist_to_goal(self, idx: int, colour: str) -> int:
+    def _min_dist_to_goal(self, idx: int, colour: str, state: Optional[Dict[str, Any]] = None) -> int:
         here = self.board.cells[idx]
         target_colour = self.board.colour_opposites[colour]
 
@@ -290,7 +307,7 @@ class HeuristicPolicy(BasePolicy):
         if getattr(here, "postype", "board") == target_colour:
             return min(axial_dist(here, tgt) for tgt in self._target_cells(colour))
 
-        open_targets = [i for i in self._open_target_indices(colour)]
+        open_targets = [i for i in self._open_target_indices(colour, state)]
         if open_targets:
             return min(axial_dist(here, self.board.cells[i]) for i in open_targets)
 
@@ -318,29 +335,39 @@ class HeuristicPolicy(BasePolicy):
         return sum(1 for idx in my_positions
             if getattr(self.board.cells[idx], "postype", "board") == colour)
 
-    def _open_target_indices(self, colour: str):
+    def _occupied_indices_from_state(self, state: Optional[Dict[str, Any]]) -> set[int]:
+        if state is None:
+            return {i for i, cell in enumerate(self.board.cells) if cell.occupied}
+
+        occupied = set()
+        for positions in state.get("pins", {}).values():
+            occupied.update(int(idx) for idx in positions)
+        return occupied
+
+    def _open_target_indices(self, colour: str, state: Optional[Dict[str, Any]] = None):
         target_colour = self.board.colour_opposites[colour]
         target_idxs = self.board.axial_of_colour(target_colour)
-        return [i for i in target_idxs if not self.board.cells[i].occupied]
+        occupied = self._occupied_indices_from_state(state)
+        return [i for i in target_idxs if i not in occupied]
 
-    def _min_dist_to_open_target(self, idx: int, colour: str) -> int:
+    def _min_dist_to_open_target(self, idx: int, colour: str, state: Optional[Dict[str, Any]] = None) -> int:
         here = self.board.cells[idx]
-        open_target_idxs = self._open_target_indices(colour)
+        open_target_idxs = self._open_target_indices(colour, state)
 
         if open_target_idxs:
             return min(axial_dist(here, self.board.cells[i]) for i in open_target_idxs)
 
         # fallback if target is full
-        return self._min_dist_to_goal(idx, colour)
+        return self._min_dist_to_goal(idx, colour, state)
 
     def _recent_repetition_penalty(self, colour: str, from_idx: int, to_idx: int, state: Dict[str, Any]) -> float:
         """
         Penalize immediate undo strongly, and repeated oscillation patterns mildly.
-        Uses last_move only because that is what your public state currently exposes.
+        Uses this colour's previous move, not the globally previous move.
         """
         penalty = 0.0
-        last_move = state.get("last_move")
-        if last_move is not None and last_move.get("colour") == colour:
+        last_move = last_move_for_colour(state, colour)
+        if last_move is not None:
             last_from = int(last_move.get("from", -1))
             last_to = int(last_move.get("to", -1))
 
@@ -357,11 +384,11 @@ class HeuristicPolicy(BasePolicy):
         return penalty
 
     def _score_action(self, colour: str, from_idx: int, to_idx: int, state: Dict[str, Any]) -> float:
-        before = self._min_dist_to_goal(from_idx, colour)
-        after = self._min_dist_to_goal(to_idx, colour)
+        before = self._min_dist_to_goal(from_idx, colour, state)
+        after = self._min_dist_to_goal(to_idx, colour, state)
 
-        before_open = self._min_dist_to_open_target(from_idx, colour)
-        after_open = self._min_dist_to_open_target(to_idx, colour)
+        before_open = self._min_dist_to_open_target(from_idx, colour, state)
+        after_open = self._min_dist_to_open_target(to_idx, colour, state)
 
         progress_gain = before - after
         open_target_gain = before_open - after_open
@@ -599,9 +626,9 @@ class MyPolicy(BasePolicy):
         if logits.numel() == 0:
             raise RuntimeError("No legal moves available")
 
-        # Simple anti-undo penalty based on public state
+        # Simple anti-undo penalty against this colour's own previous move.
         state = observation["state"]
-        last_move = state.get("last_move")
+        last_move = self.graph_builder._last_move_for_colour(state, observation["colour"])
         if last_move is not None:
             penalized_logits = logits.clone()
             last_from = int(last_move.get("from", -1))
