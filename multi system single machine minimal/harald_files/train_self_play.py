@@ -154,6 +154,10 @@ MCTS_TRAIN_SAMPLE_UNTIL_MOVE = 120
 MCTS_TRAIN_TEMPERATURE = 1.0
 MCTS_TRAIN_LATE_TEMPERATURE = 0.25
 
+# Keep value targets equivalent to the pre-merge self-play pipeline: every
+# stored position for a colour receives that colour's final/progress value.
+GAMMA = 1.0
+
 # ============================================================
 # CHECKPOINT PROMOTION CONFIG
 # ============================================================
@@ -1860,8 +1864,7 @@ def self_play_refinement(start_checkpoint: str | None = None,
     learner = TrainableAgent(name="shared_model",
                              device=device,
                              hidden_dim=MODEL_HIDDEN_DIM,
-                             num_layers=MODEL_NUM_LAYERS,
-                             lr=lr)
+                             num_layers=MODEL_NUM_LAYERS)
     heuristic = HeuristicPolicy(epsilon=0.0)
     buffer = ReplayBuffer(capacity=200000)
 
@@ -1918,10 +1921,16 @@ def self_play_refinement(start_checkpoint: str | None = None,
                                                    random_checkpoint_path=random_checkpoint_path,
                                                    device=device)
 
+        progress_print("self-play",
+                       f"starting game={game_idx} num_players={num_players} "
+                       f"learner_colour={learner_colour} seat_plan={seat_plan} "
+                       f"mcts_simulations={mcts_simulations}")
+
         per_colour_examples = defaultdict(list)
         done = False
         resigned = False
         game_start = time.time()
+        printed_first_mcts = False
 
         while not done and env.game.move_count < max_moves_per_game:
             colour = env.current_turn_colour
@@ -1934,6 +1943,12 @@ def self_play_refinement(start_checkpoint: str | None = None,
             )
 
             if should_collect_mcts:
+                if not printed_first_mcts:
+                    progress_print("self-play",
+                                   f"first MCTS call game={game_idx} move={env.game.move_count} "
+                                   f"colour={colour} seat_kind={seat_kind}")
+                    printed_first_mcts = True
+
                 best_action, gs, target_policy, mcts_meta = mcts_label_for_observation(learner=learner,
                                                                                        env=env,
                                                                                        colour=colour,
@@ -1959,8 +1974,9 @@ def self_play_refinement(start_checkpoint: str | None = None,
                 run_metrics["mcts_trained_seat_moves"] += 1
             else:
                 chosen_action = policy_cache[colour].select_action(obs)
-                step_result = env.step(colour, chosen_action)
-                done = step_result.done
+
+            step_result = env.step(colour, chosen_action)
+            done = step_result.done
 
         truncated = (not resigned) and env.game.move_count >= max_moves_per_game
         if truncated or resigned:
@@ -1998,9 +2014,6 @@ def self_play_refinement(start_checkpoint: str | None = None,
 
         run_metrics["total_stranded_home"] += avg_stranded_this_game
         run_metrics["max_stranded_home"] = max(run_metrics["max_stranded_home"], max_stranded_this_game)
-        run_metrics["mcts_calls"] += mcts_calls
-        run_metrics["mcts_failures"] += mcts_failures
-
         # Compute discounted returns backward through each color's move sequence.
         # Resigned learner gets -1.0 as terminal value regardless of progress.
         # Target values are clipped to [-1, 1] to stay within the tanh value head's range.
@@ -2308,7 +2321,6 @@ def main():
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
     RUN_WARMSTART = False
-    RUN_WARMSTART = False
     RUN_SELF_PLAY_PROMOTION = True
 
     WARMSTART_DIR = BOOTSTRAP_CHECKPOINT_DIR
@@ -2335,6 +2347,7 @@ def main():
     SELFPLAY_POSITIONS_PER_CYCLE = 300
     SELFPLAY_UPDATES_PER_CYCLE = 100
     SELFPLAY_VALUE_WEIGHT = 0.05
+    SELFPLAY_MCTS_SIMULATIONS = 128
     SELFPLAY_COLLECT_ALL_CURRENT_MODEL_MCTS_SEATS = True
     SELFPLAY_MCTS_SAMPLE_UNTIL_MOVE = 120
     SELFPLAY_MCTS_TEMPERATURE = 1.0
@@ -2383,7 +2396,7 @@ def main():
                                  positions_per_cycle=SELFPLAY_POSITIONS_PER_CYCLE,
                                  updates_per_cycle=SELFPLAY_UPDATES_PER_CYCLE,
                                  value_weight=SELFPLAY_VALUE_WEIGHT,
-                                 mcts_simulations=128,
+                                 mcts_simulations=SELFPLAY_MCTS_SIMULATIONS,
                                  collect_all_current_model_mcts_seats=SELFPLAY_COLLECT_ALL_CURRENT_MODEL_MCTS_SEATS,
                                  mcts_sample_until_move=SELFPLAY_MCTS_SAMPLE_UNTIL_MOVE,
                                  mcts_temperature=SELFPLAY_MCTS_TEMPERATURE,
