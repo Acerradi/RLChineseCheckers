@@ -2,6 +2,9 @@
 models/
 modelsV0/
 __pycache__/
+checkpoints/
+.claude/
+chats/
 .venv/
 venv/
 venv310/

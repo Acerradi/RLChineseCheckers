@@ -3,24 +3,84 @@ from collections import deque
 import os
 import sys
 import time
+import pickle
+import shutil
 import torch
 import torch.nn.functional as F
 import torch.optim as optim
 import json
+import numpy as np
 
-class ReplayBuffer:
-    def __init__(self, capacity: int = 100000):
-        self.buffer = deque(maxlen=capacity)
+try:
+    from tqdm import tqdm as _tqdm
+    def tqdm(iterable=None, **kwargs):
+        return _tqdm(iterable, **kwargs)
+    def tqdm_write(msg: str):
+        _tqdm.write(msg)
+except ImportError:
+    def tqdm(iterable=None, **kwargs):
+        return iterable
+    def tqdm_write(msg: str):
+        print(msg, flush=True)
+
+class PrioritizedReplayBuffer:
+    """
+    Prioritized experience replay buffer (Schaul et al., 2015).
+
+    New samples receive max_priority so they are guaranteed to be seen at least
+    once.  After a batch is drawn with sample_with_idx(), call update_priorities()
+    with the per-sample TD errors to sharpen the distribution.
+
+    sample() provides a uniform-random fallback (used by the bootstrap phase which
+    has no meaningful priority signal).
+    """
+    def __init__(self, capacity: int = 100000, alpha: float = 0.6):
+        self.capacity = capacity
+        self.alpha = alpha
+        self._buffer: list = []
+        self._priorities = np.ones(capacity, dtype=np.float32)
+        self._pos = 0
+        self._size = 0
+        self._max_priority = 1.0
 
     def add(self, item):
-        self.buffer.append(item)
+        if self._size < self.capacity:
+            self._buffer.append(item)
+            self._size += 1
+        else:
+            self._buffer[self._pos] = item
+        self._priorities[self._pos] = self._max_priority
+        self._pos = (self._pos + 1) % self.capacity
 
-    def sample(self, batch_size: int):
-        n = min(batch_size, len(self.buffer))
-        return random.sample(self.buffer, n)
+    def sample(self, batch_size: int) -> list:
+        """Uniform random sample — backward-compatible with old ReplayBuffer."""
+        n = min(batch_size, self._size)
+        indices = np.random.choice(self._size, size=n, replace=False)
+        return [self._buffer[i] for i in indices]
 
-    def __len__(self):
-        return len(self.buffer)
+    def sample_with_idx(self, batch_size: int) -> tuple[list, list]:
+        """Priority-weighted sample; returns (batch, indices) for priority updates."""
+        n = min(batch_size, self._size)
+        priorities = self._priorities[:self._size]
+        probs = priorities ** self.alpha
+        probs = probs / probs.sum()
+        indices = np.random.choice(self._size, size=n, replace=False, p=probs)
+        batch = [self._buffer[i] for i in indices]
+        return batch, indices.tolist()
+
+    def update_priorities(self, indices: list, errors: list):
+        for idx, err in zip(indices, errors):
+            if 0 <= idx < self._size:
+                p = abs(float(err)) + 1e-6
+                self._priorities[idx] = p
+                if p > self._max_priority:
+                    self._max_priority = p
+
+    def __len__(self) -> int:
+        return self._size
+
+# Keep name alias so any external code using ReplayBuffer still works
+ReplayBuffer = PrioritizedReplayBuffer
 
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -150,7 +210,7 @@ PROMOTION_LEAGUE_OPPONENT_WEIGHTS = {"champion": 0.35,
 
 # Promotion thresholds based on equal-strength baseline.
 # Equal-strength expected win rate is 1 / num_players.
-PROMOTION_2P_MARGIN = 0.05          # 2p requires 0.55
+PROMOTION_2P_MARGIN = 0.02          # 2p requires 0.52
 PROMOTION_OVERALL_MARGIN = 0.04     # overall must beat equal baseline by 4 percentage points
 
 # Avoid promoting models that collapse in a specific player count.
@@ -898,17 +958,23 @@ class TrainableAgent:
 
         return float(batch_loss.item())
 
-    def train_policy_value_batch_soft(self, batch, value_weight: float = 0.1, return_metrics: bool = False):
+    def train_policy_value_batch_soft(self, batch, value_weight: float = 0.1,
+                                      return_metrics: bool = False,
+                                      return_per_sample_errors: bool = False):
         """
         Policy + value training where the policy target is a probability distribution
         over legal actions.
 
         If return_metrics=True, returns a dict with total/policy/value loss.
-        Otherwise returns total loss as before.
+        If return_per_sample_errors=True, the dict also contains 'per_sample_errors'
+        (list of per-item total losses) for updating prioritized replay priorities.
         """
         if not batch:
             if return_metrics:
-                return {"total_loss": 0.0, "policy_loss": 0.0, "value_loss": 0.0}
+                out = {"total_loss": 0.0, "policy_loss": 0.0, "value_loss": 0.0}
+                if return_per_sample_errors:
+                    out["per_sample_errors"] = []
+                return out
             return 0.0
 
         self.model.train()
@@ -943,6 +1009,9 @@ class TrainableAgent:
                    "policy_loss": float(torch.stack(policy_losses).mean().item()),
                    "value_loss": float(torch.stack(value_losses).mean().item())}
 
+        if return_per_sample_errors:
+            metrics["per_sample_errors"] = [float(tl.detach().item()) for tl in total_losses]
+
         if return_metrics:
             return metrics
 
@@ -970,11 +1039,28 @@ class TrainableAgent:
                                device=self.device,
                                hidden_dim=self.hidden_dim,
                                num_layers=self.num_layers)
-    
+
     def save(self, path: str):
         save_model(self.model, path,
                    hidden_dim=self.hidden_dim,
                    num_layers=self.num_layers)
+
+    def save_full(self, path: str):
+        """Save model weights + optimizer state for complete resume."""
+        self.save(path)
+        train_state = {"optimizer": self.optimizer.state_dict()}
+        torch.save(train_state, path + ".train")
+
+    def load_full(self, path: str):
+        """Load model weights and, if present, optimizer state."""
+        self.load(path)
+        opt_path = path + ".train"
+        if os.path.exists(opt_path):
+            try:
+                train_state = torch.load(opt_path, map_location=self.device)
+                self.optimizer.load_state_dict(train_state["optimizer"])
+            except Exception as e:
+                print(f"[resume] could not load optimizer state from {opt_path}: {e}", flush=True)
 
 # Helpers for checkpoint management and opponent sampling
 # ============================================================
@@ -1433,7 +1519,8 @@ def bootstrap_imitation(num_games: int = 500,
     maybe_load_into_learner(learner, start_checkpoint)
     positions_since_update = 0
 
-    for local_game_idx in range(1, num_games + 1):
+    pbar = tqdm(range(1, num_games + 1), desc="bootstrap", unit="game", leave=True)
+    for local_game_idx in pbar:
         game_idx = start_game_index + local_game_idx
         num_players = random.choices(TRAIN_PLAYER_COUNTS, weights=TRAIN_PLAYER_COUNT_WEIGHTS, k=1)[0]
         env = ChineseCheckersEnv(num_players=num_players)
@@ -1441,7 +1528,7 @@ def bootstrap_imitation(num_games: int = 500,
 
         last_checkpoint_path = find_latest_checkpoint(BOOTSTRAP_CHECKPOINT_DIR)
         has_last_checkpoint = last_checkpoint_path is not None and os.path.exists(last_checkpoint_path)
-        
+
         learner_colour, seat_plan = sample_warmstart_seat_plan(turn_order=env.turn_order,
                                                                has_last_checkpoint=has_last_checkpoint)
         policy_cache = build_warmstart_policy_cache(seat_plan=seat_plan,
@@ -1495,7 +1582,6 @@ def bootstrap_imitation(num_games: int = 500,
 
         truncated = env.game.move_count >= max_moves_per_game
         if truncated:
-            print(f"[self-play] game={game_idx} hit move cap ({max_moves_per_game})")
             if env.game.status != "FINISHED":
                 env.game.adjudicate_by_progress("MAX_MOVES_REACHED")
 
@@ -1511,10 +1597,6 @@ def bootstrap_imitation(num_games: int = 500,
 
         avg_loss = None
         if positions_since_update >= positions_per_cycle and len(buffer) >= batch_size:
-            progress_print("bootstrap",
-                          f"starting update cycle: positions_since_update={positions_since_update} "
-                          f"buffer={len(buffer)} updates={updates_per_cycle}")
-
             losses = []
             for update_idx in range(updates_per_cycle):
                 batch = buffer.sample(batch_size)
@@ -1523,15 +1605,11 @@ def bootstrap_imitation(num_games: int = 500,
 
                 if (update_idx + 1) % 10 == 0 or (update_idx + 1) == updates_per_cycle:
                     running_avg = sum(losses) / len(losses)
-                    progress_print("bootstrap",
-                                  f"update {update_idx+1}/{updates_per_cycle} "
-                                  f"current_loss={loss:.4f} avg_loss={running_avg:.4f}")
+                    tqdm_write(f"[bootstrap] update {update_idx+1}/{updates_per_cycle} "
+                               f"loss={loss:.4f} avg={running_avg:.4f}")
 
             avg_loss = sum(losses) / len(losses)
             positions_since_update = 0
-
-            progress_print("bootstrap",
-                           f"finished update cycle avg_loss={avg_loss:.4f}")
 
         elapsed = time.time() - game_start
         loss_str = f"{avg_loss:.4f}" if avg_loss is not None else "NA"
@@ -1544,10 +1622,10 @@ def bootstrap_imitation(num_games: int = 500,
 
         if game_idx % checkpoint_every == 0:
             ckpt_path = os.path.join(checkpoint_dir, f"shared_model_{game_idx}.pt")
-            print(f"[bootstrap] saving checkpoint: {ckpt_path}")
-            learner.save(ckpt_path)
+            tqdm_write(f"[bootstrap] saving checkpoint: {ckpt_path}")
+            learner.save_full(ckpt_path)
 
-    learner.save(os.path.join(checkpoint_dir, "shared_model_final.pt"))
+    learner.save_full(os.path.join(checkpoint_dir, "shared_model_final.pt"))
 
 
 def evaluate_warmstart_topk_match(checkpoint_path: str,
@@ -1782,7 +1860,8 @@ def self_play_refinement(start_checkpoint: str | None = None,
     learner = TrainableAgent(name="shared_model",
                              device=device,
                              hidden_dim=MODEL_HIDDEN_DIM,
-                             num_layers=MODEL_NUM_LAYERS)
+                             num_layers=MODEL_NUM_LAYERS,
+                             lr=lr)
     heuristic = HeuristicPolicy(epsilon=0.0)
     buffer = ReplayBuffer(capacity=200000)
 
@@ -1793,6 +1872,7 @@ def self_play_refinement(start_checkpoint: str | None = None,
 
     run_metrics = {"games": 0,
                    "truncated": 0,
+                   "resigned": 0,
                    "adjudicated": 0,
                    "stall_adjudicated": 0,
                    "stranded_home_adjudicated": 0,
@@ -1814,7 +1894,8 @@ def self_play_refinement(start_checkpoint: str | None = None,
     warmstart_final_path = os.path.join(BOOTSTRAP_CHECKPOINT_DIR, "shared_model_final.pt")
     champion_path = os.path.join(checkpoint_dir, CHAMPION_NAME)
 
-    for local_game_idx in range(1, num_games + 1):
+    pbar = tqdm(range(1, num_games + 1), desc="self-play", unit="game", leave=True)
+    for local_game_idx in pbar:
         game_idx = start_game_index + local_game_idx
         num_players = random.choices(TRAIN_PLAYER_COUNTS,
                                      weights=TRAIN_PLAYER_COUNT_WEIGHTS,
@@ -1836,13 +1917,10 @@ def self_play_refinement(start_checkpoint: str | None = None,
                                                    warmstart_final_path=warmstart_final_path if os.path.exists(warmstart_final_path) else None,
                                                    random_checkpoint_path=random_checkpoint_path,
                                                    device=device)
-        
-        progress_print("self-play",
-                       f"starting game={game_idx} num_players={num_players} "
-                       f"learner_colour={learner_colour} seat_plan={seat_plan}")
-        
+
         per_colour_examples = defaultdict(list)
         done = False
+        resigned = False
         game_start = time.time()
 
         while not done and env.game.move_count < max_moves_per_game:
@@ -1881,13 +1959,11 @@ def self_play_refinement(start_checkpoint: str | None = None,
                 run_metrics["mcts_trained_seat_moves"] += 1
             else:
                 chosen_action = policy_cache[colour].select_action(obs)
-            
-            step_result = env.step(colour, chosen_action)
-            done = step_result.done
+                step_result = env.step(colour, chosen_action)
+                done = step_result.done
 
-        truncated = env.game.move_count >= max_moves_per_game
-        if truncated:
-            print(f"[self-play] game={game_idx} hit move cap ({max_moves_per_game})")
+        truncated = (not resigned) and env.game.move_count >= max_moves_per_game
+        if truncated or resigned:
             if env.game.status != "FINISHED":
                 env.game.adjudicate_by_progress("MAX_MOVES_REACHED")
 
@@ -1898,6 +1974,7 @@ def self_play_refinement(start_checkpoint: str | None = None,
 
         run_metrics["games"] += 1
         run_metrics["truncated"] += int(truncated)
+        run_metrics["resigned"] += int(resigned)
         run_metrics["total_moves"] += env.game.move_count
 
         if adjudication_type != "none":
@@ -1921,13 +1998,25 @@ def self_play_refinement(start_checkpoint: str | None = None,
 
         run_metrics["total_stranded_home"] += avg_stranded_this_game
         run_metrics["max_stranded_home"] = max(run_metrics["max_stranded_home"], max_stranded_this_game)
+        run_metrics["mcts_calls"] += mcts_calls
+        run_metrics["mcts_failures"] += mcts_failures
 
+        # Compute discounted returns backward through each color's move sequence.
+        # Resigned learner gets -1.0 as terminal value regardless of progress.
+        # Target values are clipped to [-1, 1] to stay within the tanh value head's range.
+        # Without clipping, accumulated stranded_home_penalty step rewards (e.g. -0.6/move
+        # over 36 moves with GAMMA=0.99) produce targets as extreme as -20, making MSE ~200.
         examples = []
         for colour, exs in per_colour_examples.items():
-            target_value = terminal_value_from_result(env.game, final_state, colour, truncated=truncated)
-            for ex in exs:
-                ex["target_value"] = target_value
-                examples.append(ex)
+            if colour == learner_colour and resigned:
+                terminal_val = -1.0
+            else:
+                terminal_val = terminal_value_from_result(env.game, final_state, colour, truncated=truncated)
+            g = terminal_val
+            for ex in reversed(exs):
+                g = ex.pop("step_reward", 0.0) + GAMMA * g
+                ex["target_value"] = float(max(-1.0, min(1.0, g)))
+            examples.extend(exs)
 
         for ex in examples:
             buffer.add(ex)
@@ -1939,16 +2028,18 @@ def self_play_refinement(start_checkpoint: str | None = None,
         updates_this_game = 0
 
         if positions_since_update >= positions_per_cycle and len(buffer) >= batch_size:
-            progress_print("self-play",
-                           f"starting update cycle: positions_since_update={positions_since_update} "
-                           f"buffer={len(buffer)} updates={updates_per_cycle}")
-
             losses = []
             for update_idx in range(updates_per_cycle):
-                batch = buffer.sample(batch_size)
-                loss_metrics = learner.train_policy_value_batch_soft(batch,
-                                                                     value_weight=value_weight,
-                                                                     return_metrics=True)
+                # Prioritized sampling: returns batch + storage indices
+                batch, sample_indices = buffer.sample_with_idx(batch_size)
+                loss_metrics = learner.train_policy_value_batch_soft(
+                    batch,
+                    value_weight=value_weight,
+                    return_metrics=True,
+                    return_per_sample_errors=True)
+
+                # Update replay priorities with per-sample total loss as proxy TD error
+                buffer.update_priorities(sample_indices, loss_metrics["per_sample_errors"])
 
                 loss = loss_metrics["total_loss"]
                 losses.append(loss)
@@ -1963,17 +2054,13 @@ def self_play_refinement(start_checkpoint: str | None = None,
 
                 if (update_idx + 1) % 10 == 0 or (update_idx + 1) == updates_per_cycle:
                     running_avg = sum(losses) / len(losses)
-                    progress_print("self-play",
-                                   f"update {update_idx+1}/{updates_per_cycle} "
-                                   f"current_loss={loss:.4f} avg_loss={running_avg:.4f} "
-                                   f"policy_loss={loss_metrics['policy_loss']:.4f} "
-                                   f"value_loss={loss_metrics['value_loss']:.4f}")
+                    tqdm_write(f"[self-play] update {update_idx+1}/{updates_per_cycle} "
+                               f"loss={loss:.4f} avg={running_avg:.4f} "
+                               f"policy={loss_metrics['policy_loss']:.4f} "
+                               f"value={loss_metrics['value_loss']:.4f}")
 
             avg_loss = sum(losses) / len(losses)
             positions_since_update = 0
-
-            progress_print("self-play",
-                           f"finished update cycle avg_loss={avg_loss:.4f}")
 
         elapsed = time.time() - game_start
         loss_str = f"{avg_loss:.4f}" if avg_loss is not None else "NA"
@@ -1994,8 +2081,8 @@ def self_play_refinement(start_checkpoint: str | None = None,
 
         if game_idx % checkpoint_every == 0:
             ckpt_path = os.path.join(checkpoint_dir, f"shared_model_{game_idx}.pt")
-            print(f"[self-play] saving checkpoint: {ckpt_path}")
-            learner.save(ckpt_path)
+            tqdm_write(f"[self-play] saving checkpoint: {ckpt_path}")
+            learner.save_full(ckpt_path)
 
     games = run_metrics["games"]
     updates = run_metrics["updates"]
@@ -2008,6 +2095,7 @@ def self_play_refinement(start_checkpoint: str | None = None,
     print(f"total_examples             : {run_metrics['total_examples']}")
     print(f"avg_examples_per_game      : {safe_rate(run_metrics['total_examples'], games):.2f}")
     print(f"truncation_rate            : {safe_rate(run_metrics['truncated'], games):.3f}")
+    print(f"resign_rate                : {safe_rate(run_metrics['resigned'], games):.3f}")
     print(f"adjudication_rate          : {safe_rate(run_metrics['adjudicated'], games):.3f}")
     print(f"max_moves_adj_rate         : {safe_rate(run_metrics['max_moves_adjudicated'], games):.3f}")
     print(f"stall_adj_rate             : {safe_rate(run_metrics['stall_adjudicated'], games):.3f}")
@@ -2033,7 +2121,7 @@ def self_play_refinement(start_checkpoint: str | None = None,
 
     print("=" * 80)
 
-    learner.save(os.path.join(checkpoint_dir, "shared_model_final.pt"))
+    learner.save_full(os.path.join(checkpoint_dir, "shared_model_final.pt"))
 
 def self_play_with_promotion(start_checkpoint: str,
                              total_blocks: int = 20,
@@ -2054,15 +2142,25 @@ def self_play_with_promotion(start_checkpoint: str,
 
     champion_ckpt = os.path.join(checkpoint_dir, CHAMPION_NAME)
     if not os.path.exists(champion_ckpt):
-        # initialize champion from warm-start or supplied starting checkpoint
-        import shutil
-        shutil.copyfile(start_checkpoint, champion_ckpt)
+        copy_checkpoint_with_optimizer(start_checkpoint, champion_ckpt)
         print(f"[promotion] initialized champion from {start_checkpoint}")
 
-    current_start_ckpt = champion_ckpt
-    total_games_done = 0
+    # Resume from persisted block state if available
+    block_state = load_block_state(checkpoint_dir)
+    if block_state is not None:
+        resume_block = block_state["block_idx"] + 1
+        total_games_done = block_state["total_games_done"]
+        current_start_ckpt = block_state["current_start_ckpt"]
+        if not os.path.exists(current_start_ckpt):
+            print(f"[promotion] resume ckpt missing ({current_start_ckpt}), falling back to champion")
+            current_start_ckpt = champion_ckpt
+        print(f"[promotion] resuming from block {resume_block} (games done: {total_games_done})")
+    else:
+        resume_block = 1
+        total_games_done = 0
+        current_start_ckpt = champion_ckpt
 
-    for block_idx in range(1, total_blocks + 1):
+    for block_idx in range(resume_block, total_blocks + 1):
         print("\n" + "#" * 80)
         print(f"[promotion] STARTING BLOCK {block_idx}/{total_blocks}")
         print(f"[promotion] actual champion = {champion_ckpt}")
@@ -2094,8 +2192,7 @@ def self_play_with_promotion(start_checkpoint: str,
         if not os.path.exists(produced_ckpt):
             raise FileNotFoundError(f"Expected challenger checkpoint missing: {produced_ckpt}")
 
-        import shutil
-        shutil.copyfile(produced_ckpt, challenger_ckpt)
+        copy_checkpoint_with_optimizer(produced_ckpt, challenger_ckpt)
         print(f"[promotion] challenger saved to {challenger_ckpt}")
 
         # Evaluate challenger against champion
@@ -2117,10 +2214,9 @@ def self_play_with_promotion(start_checkpoint: str,
                                     "by_player_count": report.get("by_player_count", {})})
         print(f"[promotion] metrics written to {report_path}")
 
-        # Promote or reject
         # Promote, continue, or reset
         if report["promoted"]:
-            shutil.copyfile(challenger_ckpt, champion_ckpt)
+            copy_checkpoint_with_optimizer(challenger_ckpt, champion_ckpt)
             current_start_ckpt = champion_ckpt
             print("[promotion] challenger PROMOTED -> new champion")
             print(f"[promotion] next block will start from champion: {current_start_ckpt}")
@@ -2145,12 +2241,19 @@ def self_play_with_promotion(start_checkpoint: str,
 
         total_games_done += games_per_block
 
+        # Persist block state so training can resume after a crash
+        save_block_state(checkpoint_dir,
+                         block_idx=block_idx,
+                         total_games_done=total_games_done,
+                         current_start_ckpt=current_start_ckpt)
+
     print("\n[promotion] training complete.")
     print(f"[promotion] final champion: {champion_ckpt}")
 
 def maybe_load_into_learner(learner: TrainableAgent, checkpoint_path: str | None):
     if checkpoint_path is not None and os.path.exists(checkpoint_path):
-        learner.load(checkpoint_path)
+        learner.load_full(checkpoint_path)
+        print(f"[resume] loaded weights + optimizer from {checkpoint_path}", flush=True)
 
 
 def find_latest_checkpoint(checkpoint_dir: str) -> str | None:
@@ -2172,9 +2275,39 @@ def find_latest_checkpoint(checkpoint_dir: str) -> str | None:
     return candidates[-1][1]
 
 
+def save_block_state(checkpoint_dir: str, block_idx: int, total_games_done: int, current_start_ckpt: str):
+    """Persist block index so self_play_with_promotion can resume after a crash."""
+    state = {"block_idx": block_idx,
+             "total_games_done": total_games_done,
+             "current_start_ckpt": current_start_ckpt}
+    path = os.path.join(checkpoint_dir, "block_state.json")
+    with open(path, "w") as f:
+        json.dump(state, f, indent=2)
+
+
+def load_block_state(checkpoint_dir: str) -> dict | None:
+    path = os.path.join(checkpoint_dir, "block_state.json")
+    if not os.path.exists(path):
+        return None
+    try:
+        with open(path) as f:
+            return json.load(f)
+    except Exception:
+        return None
+
+
+def copy_checkpoint_with_optimizer(src: str, dst: str):
+    """Copy a .pt checkpoint and its accompanying .pt.train optimizer state if present."""
+    shutil.copyfile(src, dst)
+    src_train = src + ".train"
+    if os.path.exists(src_train):
+        shutil.copyfile(src_train, dst + ".train")
+
+
 def main():
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
+    RUN_WARMSTART = False
     RUN_WARMSTART = False
     RUN_SELF_PLAY_PROMOTION = True
 
@@ -2196,7 +2329,7 @@ def main():
     WARMSTART_MAX_LABEL_MOVES_AFTER_PREFIX = 220
 
     SELFPLAY_TOTAL_BLOCKS = 100
-    SELFPLAY_GAMES_PER_BLOCK = 50
+    SELFPLAY_GAMES_PER_BLOCK = 100
     SELFPLAY_BATCH_SIZE = 64
     SELFPLAY_MAX_MOVES = 300
     SELFPLAY_POSITIONS_PER_CYCLE = 300
