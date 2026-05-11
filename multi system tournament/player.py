@@ -8,8 +8,8 @@ import random
 import socket
 import time
 from typing import Dict, Any
+from policy_template import load_model, MyPolicy
 import torch
-from harald_files.policy_template import load_model, MyPolicy
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
@@ -24,8 +24,7 @@ CHECKPOINT_PATH = os.path.join(
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-HOST = "10.245.30.129"  # IP address of the server; change if needed
-LOCAL_HOST = "127.0.0.1"  # IP address of the local machine; change if needed
+HOST = "10.245.30.129"
 PORT = 50555
 DEBUG_NET = os.getenv("DEBUG_NET", "0") not in ("0", "", "false", "False")
 
@@ -61,6 +60,7 @@ def rpc(payload: Dict[str, Any]) -> Dict[str, Any]:
         return json.loads(data.decode("utf-8"))
     except Exception as e:
         return {"ok": False, "error": f"bad-json: {e}"}
+
 
 # =============================================================
 # Simple renderer for the server's JSON board (optional)
@@ -208,8 +208,6 @@ def main():
                 print("Policy error, falling back to random move: ", e)
                 pid, moves = random.choice(movable)
                 to_index = random.choice(moves)
-            
-            time.sleep(0.2)
             '''-----------------PLAYING LOGIC----------------'''
 
             mv = rpc({

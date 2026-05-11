@@ -1,0 +1,4 @@
+game_number,game_id,player1,player2,player3,player4,status,final_scores,time_scores,distance_scores,pin_scores,winner
+1,87cc2f8a-f11a-4a67-bd40-d87503c90133,pA,pB,NA,NA,FINISHED,pA:177.9;pB:168.4,pA:72.9;pB:67.4,pA:105.0;pB:101.0,pA:0.0;pB:0.0,None
+2,dcc7436e-0bff-4810-87b4-30d0baf360ec,pC,pD,NA,NA,FINISHED,pC:168.2;pD:174.8,pC:67.2;pD:73.8,pC:101.0;pD:101.0,pC:0.0;pD:0.0,None
+3,8c013aab-2322-4ddb-9a85-fe6a605b33c9,pA,pD,NA,NA,FINISHED,pA:170.4;pD:169.7,pA:73.4;pD:68.7,pA:97.0;pD:101.0,pA:0.0;pD:0.0,None
