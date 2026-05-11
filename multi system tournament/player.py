@@ -9,6 +9,8 @@ import socket
 import time
 from typing import Dict, Any
 from policy_template import load_model, MyPolicy
+from checkers_board import HexBoard
+from checkers_pins import Pin
 import torch
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -27,6 +29,9 @@ device = "cuda" if torch.cuda.is_available() else "cpu"
 HOST = "10.245.30.129"
 PORT = 50555
 DEBUG_NET = os.getenv("DEBUG_NET", "0") not in ("0", "", "false", "False")
+
+# Initialize board for display
+board = HexBoard(R=4)
 
 
 def debug(*args):
@@ -63,17 +68,27 @@ def rpc(payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 # =============================================================
-# Simple renderer for the server's JSON board (optional)
+# Full board visualization using HexBoard
 # =============================================================
 def render_json_board(state):
     """
-    Rudimentary visualization using only JSON information.
-    Does NOT require HexBoard or Pin.
+    Visualize the game board using the HexBoard's ASCII display.
+    Creates Pin objects from JSON state and renders them on the board.
     """
-    pins = state.get("pins", {})
+    pins_data = state.get("pins", {})
+    
+    # Create Pin objects from the JSON state
+    pins = []
+    pin_id = 0
+    for colour, indices in pins_data.items():
+        for index in indices:
+            pin = Pin(board, index, pin_id, color=colour)
+            pins.append(pin)
+            pin_id += 1
+    
+    # Display the board
     print("=== BOARD STATE ===")
-    for colour, indices in pins.items():
-        print(f"{colour}: {indices}")
+    board.print_ascii(pins)
     print("===================")
 
 
