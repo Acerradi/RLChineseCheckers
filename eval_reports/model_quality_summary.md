@@ -1,49 +1,50 @@
 # Model Quality Summary
 
-Target: `checkpoints/gnn_h128_l4/self_play/shared_model_final.pt`
+Target: `heuristic`
+Target kind: `heuristic`
 Overall quality: **Good**
 Total games: 500
 
 ## Headline
 
-- Overall win/draw/loss: 46.2% / 0.0% / 53.8%
-- Chance-adjusted overall win rate: 1.62x random expectation
-- Baseline win rate: 54.3%
-- Chance-adjusted baseline win rate: 1.97x random expectation
-- Checkpoint-opponent win rate: 34.0%
-- Chance-adjusted checkpoint win rate: 1.10x random expectation
-- Average progress rank: 2.18
-- Progress placement score: 0.639 (1.0 first place, 0.0 last place)
-- Overall performance score: 0.641 (blends progress rank and final-score rank)
+- Overall win/draw/loss: 49.2% / 0.0% / 50.8%
+- Chance-adjusted overall win rate: 1.83x random expectation
+- Baseline win rate: 60.7%
+- Chance-adjusted baseline win rate: 2.33x random expectation
+- Checkpoint-opponent win rate: 32.0%
+- Chance-adjusted checkpoint win rate: 1.07x random expectation
+- Average progress rank: 2.08
+- Progress placement score: 0.643 (1.0 first place, 0.0 last place)
+- Overall performance score: 0.644 (blends progress rank and final-score rank)
 - Top-half by progress rate: 68.0%
 - Move-cap/adjudication rate: 0.0%
-- Average score: 862.8
-- Average training progress: 183.5
-- Average pins in goal: 6.77
-- Average remaining goal distance: 15.0
+- Average score: 891.3
+- Average training progress: 195.5
+- Average pins in goal: 7.04
+- Average remaining goal distance: 13.3
 - Illegal attempts: 0
 
 ## Best And Weakest Cases
 
 - Best: `vs_random` with 2 players, win rate 100.0%, adjusted win 2.00x, performance 1.000
-- Weakest: `vs_checkpoint:champion.pt` with 4 players, win rate 0.0%, adjusted win 0.00x, performance 0.400
+- Weakest: `vs_heuristic` with 6 players, win rate 5.0%, adjusted win 0.30x, performance 0.310
 
 ## Scenario Averages
 
 | Scenario | Games | Win | Adj Win | Avg Rank | Place | Perf | Top Half | Loss | Cap | Score | Progress |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| `vs_checkpoint:champion.pt` | 100 | 32.0% | 1.02x | 2.53 | 0.522 | 0.522 | 54.0% | 68.0% | 0.0% | 1007.6 | 234.6 |
-| `vs_checkpoint:shared_model_final.pt` | 100 | 36.0% | 1.19x | 2.53 | 0.531 | 0.532 | 56.0% | 64.0% | 0.0% | 993.4 | 228.6 |
-| `vs_heuristic` | 100 | 25.0% | 0.68x | 2.88 | 0.440 | 0.447 | 47.0% | 75.0% | 0.0% | 996.3 | 230.4 |
-| `vs_mixed` | 100 | 38.0% | 1.23x | 1.96 | 0.701 | 0.705 | 83.0% | 62.0% | 0.0% | 730.5 | 140.8 |
-| `vs_random` | 100 | 100.0% | 4.00x | 1.00 | 1.000 | 1.000 | 100.0% | 0.0% | 0.0% | 586.0 | 83.2 |
+| `vs_checkpoint:champion.pt` | 100 | 36.0% | 1.16x | 2.51 | 0.525 | 0.525 | 55.0% | 64.0% | 0.0% | 1039.6 | 247.5 |
+| `vs_checkpoint:shared_model_final.pt` | 100 | 28.0% | 0.99x | 2.51 | 0.485 | 0.486 | 52.0% | 72.0% | 0.0% | 1027.0 | 243.5 |
+| `vs_heuristic` | 100 | 36.0% | 1.17x | 2.58 | 0.512 | 0.512 | 56.0% | 64.0% | 0.0% | 1009.0 | 237.6 |
+| `vs_mixed` | 100 | 46.0% | 1.82x | 1.79 | 0.695 | 0.696 | 77.0% | 54.0% | 0.0% | 755.2 | 151.6 |
+| `vs_random` | 100 | 100.0% | 4.00x | 1.00 | 1.000 | 1.000 | 100.0% | 0.0% | 0.0% | 625.7 | 97.2 |
 
 ## Player Count Averages
 
 | Players | Games | Win | Adj Win | Avg Rank | Place | Perf | Top Half | Loss | Cap | Score | Progress |
 |---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| 2 | 100 | 83.0% | 1.66x | 1.17 | 0.830 | 0.830 | 83.0% | 17.0% | 0.0% | 1108.0 | 269.8 |
-| 3 | 100 | 48.0% | 1.44x | 1.82 | 0.590 | 0.598 | 70.0% | 52.0% | 0.0% | 825.8 | 172.0 |
-| 4 | 100 | 29.0% | 1.16x | 2.32 | 0.560 | 0.560 | 58.0% | 71.0% | 0.0% | 805.9 | 163.3 |
-| 5 | 100 | 40.0% | 2.00x | 2.37 | 0.657 | 0.659 | 74.0% | 60.0% | 0.0% | 838.4 | 177.1 |
-| 6 | 100 | 31.0% | 1.86x | 3.22 | 0.556 | 0.560 | 55.0% | 69.0% | 0.0% | 735.7 | 135.5 |
+| 2 | 100 | 62.0% | 1.24x | 1.38 | 0.620 | 0.620 | 62.0% | 38.0% | 0.0% | 1100.9 | 267.5 |
+| 3 | 100 | 64.0% | 1.92x | 1.55 | 0.725 | 0.725 | 81.0% | 36.0% | 0.0% | 915.1 | 203.4 |
+| 4 | 100 | 41.0% | 1.64x | 2.24 | 0.587 | 0.587 | 56.0% | 59.0% | 0.0% | 804.3 | 164.6 |
+| 5 | 100 | 40.0% | 2.00x | 2.41 | 0.647 | 0.648 | 75.0% | 60.0% | 0.0% | 818.6 | 170.8 |
+| 6 | 100 | 39.0% | 2.34x | 2.81 | 0.638 | 0.639 | 66.0% | 61.0% | 0.0% | 817.6 | 171.2 |

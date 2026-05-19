@@ -109,14 +109,33 @@ def expand_checkpoint_args(values: List[str]) -> List[str]:
     return sorted(dict.fromkeys(paths))
 
 
+def build_target_spec(target_kind: str, target_checkpoint: Optional[str]) -> EntrantSpec:
+    if target_kind == "checkpoint":
+        if not target_checkpoint:
+            raise ValueError("TARGETCHECKPOINT must be set when TARGETKIND is 'checkpoint'")
+        return EntrantSpec("target", "checkpoint", target_checkpoint)
+
+    if target_kind == "heuristic":
+        return EntrantSpec("target", "heuristic")
+
+    if target_kind == "random":
+        return EntrantSpec("target", "random")
+
+    raise ValueError(f"Unknown target kind: {target_kind}")
+
+
+def target_label(target_kind: str, target_checkpoint: Optional[str]) -> str:
+    if target_kind == "checkpoint":
+        return target_checkpoint or "checkpoint"
+    return target_kind
+
+
 def build_scenario_entrants(*,
-                            target_checkpoint: str,
+                            target: EntrantSpec,
                             scenario: str,
                             num_players: int,
                             opponent_checkpoint: Optional[str] = None,
                             fill: str = "heuristic") -> List[EntrantSpec]:
-    target = EntrantSpec("target", "checkpoint", target_checkpoint)
-
     if scenario == "random":
         return [target] + [EntrantSpec(f"random_{i}", "random") for i in range(num_players - 1)]
 
@@ -489,7 +508,9 @@ def build_compact_summary(report: Dict[str, Any]) -> Dict[str, Any]:
         by_player_count[str(players)] = aggregate_summaries([item for item in results if item["num_players"] == players])
 
     return {
-        "target_checkpoint": report["target_checkpoint"],
+        "target": report["target"],
+        "target_kind": report["target_kind"],
+        "target_checkpoint": report.get("target_checkpoint"),
         "quality_label": quality_label(overall, baseline, checkpoint),
         "games_total": overall.get("games", 0),
         "overall": overall,
@@ -515,7 +536,8 @@ def format_compact_markdown(summary: Dict[str, Any]) -> str:
     lines = [
         "# Model Quality Summary",
         "",
-        f"Target: `{summary['target_checkpoint']}`",
+        f"Target: `{summary['target']}`",
+        f"Target kind: `{summary['target_kind']}`",
         f"Overall quality: **{summary['quality_label']}**",
         f"Total games: {summary['games_total']}",
         "",
@@ -603,7 +625,8 @@ def format_compact_markdown(summary: Dict[str, Any]) -> str:
 
 def print_summary(report: Dict[str, Any]) -> None:
     print("\nMODEL QUALITY SUMMARY")
-    print(f"Target: {report['target_checkpoint']}")
+    print(f"Target: {report['target']}")
+    print(f"Target kind: {report['target_kind']}")
     print(f"Device: {report['device']}")
     print(f"Max moves: {report['max_moves']}")
     print()
@@ -630,6 +653,15 @@ def print_summary(report: Dict[str, Any]) -> None:
 
 
 def main() -> None:
+    # Set TARGETKIND = "heuristic" to evaluate the standard heuristic itself.
+    # This is useful as a baseline report to compare against your trained model report.
+    #
+    # Example heuristic-baseline setup:
+    #   TARGETKIND = "heuristic"
+    #   TARGETCHECKPOINT = None
+    #   SUMMARYOUT = "eval_reports/model_quality_summary_heuristic.md"
+    #   SUMMARYJSONOUT = "eval_reports/model_quality_summary_heuristic.json"
+    TARGETKIND = "heuristic"  # "checkpoint", "heuristic", or "random"
     TARGETCHECKPOINT = "checkpoints/gnn_h128_l4/self_play/shared_model_final.pt"
     OPPONENTCHECKPOINTS = ["checkpoints/gnn_h128_l4/bootstrap/shared_model_final.pt",
                            "checkpoints/gnn_h128_l4/self_play/champion.pt"]
@@ -642,16 +674,18 @@ def main() -> None:
     HIDDENDIM = None
     NUMLAYERS = None
     FILL = "heuristic"  # "heuristic" or "random"
-    SUMMARYOUT = "eval_reports/model_quality_summary.md"
-    SUMMARYJSONOUT = "eval_reports/model_quality_summary.json"
-
+    SUMMARYOUT = "eval_reports/model_quality_summary_heuristic.md"
+    SUMMARYJSONOUT = "eval_reports/model_quality_summary_heuristic.json"
     WRITEDETAILEDREPORTS = False
     JSONOUT = "eval_reports/model_quality_report.json"
     JSONLOUT = "eval_reports/model_quality_games.jsonl"
     QUIET = False
 
-    if not os.path.exists(TARGETCHECKPOINT):
+    if TARGETKIND == "checkpoint" and not os.path.exists(TARGETCHECKPOINT):
         raise FileNotFoundError(f"Target checkpoint not found: {TARGETCHECKPOINT}")
+
+    target = build_target_spec(TARGETKIND, TARGETCHECKPOINT)
+    target_display = target_label(TARGETKIND, TARGETCHECKPOINT)
 
     opponent_checkpoints = expand_checkpoint_args(OPPONENTCHECKPOINTS)
     missing = [path for path in opponent_checkpoints if not os.path.exists(path)]
@@ -667,7 +701,7 @@ def main() -> None:
             raise ValueError(f"Player count must be between 2 and 6, got {num_players}")
 
         for baseline in BASELINES:
-            entrants = build_scenario_entrants(target_checkpoint=TARGETCHECKPOINT,
+            entrants = build_scenario_entrants(target=target,
                                                scenario=baseline,
                                                num_players=num_players,
                                                fill=FILL)
@@ -686,7 +720,7 @@ def main() -> None:
 
         for opponent in opponent_checkpoints:
             label = f"vs_checkpoint:{os.path.basename(opponent)}"
-            entrants = build_scenario_entrants(target_checkpoint=TARGETCHECKPOINT,
+            entrants = build_scenario_entrants(target=target,
                                                scenario="checkpoint",
                                                num_players=num_players,
                                                opponent_checkpoint=opponent,
@@ -704,7 +738,9 @@ def main() -> None:
                                              verbose=not QUIET))
             scenario_index += 1
 
-    report = {"target_checkpoint": TARGETCHECKPOINT,
+    report = {"target": target_display,
+              "target_kind": TARGETKIND,
+              "target_checkpoint": TARGETCHECKPOINT if TARGETKIND == "checkpoint" else None,
               "opponent_checkpoints": opponent_checkpoints,
               "baselines": BASELINES,
               "players": PLAYERS,
