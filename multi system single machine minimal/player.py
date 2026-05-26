@@ -7,12 +7,23 @@ import json
 import random
 import socket
 import time
-from typing import Dict, Any
-from policy_template import load_model, MyPolicy
+import sys
+from typing import Dict, Any, List
+
 import torch
 
 CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.dirname(CURRENT_DIR)
+
+# Add harald_files to path so we can import policy_template
+HARALD_FILES_DIR = os.path.join(CURRENT_DIR, "harald_files")
+if HARALD_FILES_DIR not in sys.path:
+    sys.path.insert(0, HARALD_FILES_DIR)
+
+from policy_template import load_model, MyPolicy
+from checkers_board import HexBoard
+from checkers_pins import Pin
+from checkers_gui import BoardGUI
 
 CHECKPOINT_PATH = os.path.join(
     PROJECT_ROOT,
@@ -24,7 +35,7 @@ CHECKPOINT_PATH = os.path.join(
 
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
-HOST = "10.245.30.129"
+HOST = "10.245.30.144"
 PORT = 50555
 DEBUG_NET = os.getenv("DEBUG_NET", "0") not in ("0", "", "false", "False")
 
@@ -78,6 +89,37 @@ def render_json_board(state):
 
 
 # =============================================================
+# Visual board display
+# =============================================================
+def create_pins_from_state(board: HexBoard, state: Dict[str, Any]) -> List[Pin]:
+    """
+    Create Pin objects from the JSON state.
+    Returns a list of Pin objects for all pieces on the board.
+    """
+    pins = state.get("pins", {})
+    colour_map = {
+        "red": "red",
+        "blue": "blue",
+        "yellow": "yellow",
+        "lawn green": "lawn green",
+        "purple": "purple",
+        "gray0": "gray0"
+    }
+    
+    pin_list = []
+    pin_id = 0
+    
+    for colour_name, indices in pins.items():
+        colour_display = colour_map.get(colour_name, colour_name)
+        for index in indices:
+            pin = Pin(board, index, pin_id, color=colour_display)
+            pin_list.append(pin)
+            pin_id += 1
+    
+    return pin_list
+
+
+# =============================================================
 # Main client loop
 # =============================================================
 def main():
@@ -101,6 +143,10 @@ def main():
     policy = MyPolicy(model=model, device=device)
 
     print(f"Joined game {game_id} as {colour}")
+
+    # Initialize visual board display
+    board = HexBoard()
+    gui = None
 
     # Wait until game ready
     while True:
@@ -132,6 +178,17 @@ def main():
             return
 
         state = st["state"]
+
+        # Initialize GUI on first state
+        if gui is None:
+            pin_list = create_pins_from_state(board, state)
+            gui = BoardGUI(board, pin_list)
+            gui.root.update_idletasks()
+            gui.root.update()
+        else:
+            # Update GUI with current state
+            pin_list = create_pins_from_state(board, state)
+            gui.refresh(pin_list)
 
         # Timeout messages
         if state.get("turn_timeout_notice") and timeoutnotice_move< state.get("move_count"):

@@ -99,7 +99,7 @@ def build_policies(env: ChineseCheckersEnv) -> Dict[str, MyPolicy]:
 
     policy_a = MyPolicy(model=model_a, device=DEVICE)
     policy_b = MyPolicy(model=model_b, device=DEVICE)
-    #policy_a = HeuristicPolicy()     # Uncomment to test a checkpoint vs heuristic
+    policy_a = HeuristicPolicy()     # Uncomment to test a checkpoint vs heuristic
     #policy_b = HeuristicPolicy()     # Uncomment to test a checkpoint vs heuristic
 
     policies_by_colour: Dict[str, MyPolicy] = {}

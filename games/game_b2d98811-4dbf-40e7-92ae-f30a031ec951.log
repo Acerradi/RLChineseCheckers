@@ -1,0 +1,384 @@
+[2026-05-22 09:01:59] GAME CREATED
+[2026-05-22 09:02:10] PLAYER JOINED: Harald as yellow
+[2026-05-22 09:02:17] PLAYER JOINED: Simen as purple
+[2026-05-22 09:02:17] PLAYER START: Simen (purple)
+[2026-05-22 09:02:18] PLAYER START: Harald (yellow)
+[2026-05-22 09:02:18] GAME START — turn order ['yellow', 'purple']
+[2026-05-22 09:02:18] MOVE 1: Harald (yellow) 24->26 [0.01ms]
+[2026-05-22 09:02:18] SCORE Harald (yellow): Final=191.3, Time=99.3, Moves(1)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-22 09:02:18] SCORE Simen (purple): Final=0.0, Time=0.0, Moves(0)=0.0, Pins(0)=0.0, Dist=0.0
+[2026-05-22 09:02:19] MOVE 2: Simen (purple) 85->64 [0.00ms]
+[2026-05-22 09:02:19] SCORE Harald (yellow): Final=191.3, Time=99.3, Moves(1)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-22 09:02:19] SCORE Simen (purple): Final=191.5, Time=99.5, Moves(1)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-22 09:02:19] MOVE 3: Harald (yellow) 35->14 [0.00ms]
+[2026-05-22 09:02:19] SCORE Harald (yellow): Final=193.2, Time=99.2, Moves(2)=0.0, Pins(0)=0.0, Dist=94.0
+[2026-05-22 09:02:19] SCORE Simen (purple): Final=191.5, Time=99.5, Moves(1)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-22 09:02:19] MOVE 4: Simen (purple) 110->83 [0.00ms]
+[2026-05-22 09:02:19] SCORE Harald (yellow): Final=193.2, Time=99.2, Moves(2)=0.0, Pins(0)=0.0, Dist=94.0
+[2026-05-22 09:02:19] SCORE Simen (purple): Final=195.0, Time=99.0, Moves(2)=0.0, Pins(0)=0.0, Dist=96.0
+[2026-05-22 09:02:19] MOVE 5: Harald (yellow) 10->56 [0.00ms]
+[2026-05-22 09:02:19] SCORE Harald (yellow): Final=197.2, Time=99.2, Moves(3)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-22 09:02:19] SCORE Simen (purple): Final=195.0, Time=99.0, Moves(2)=0.0, Pins(0)=0.0, Dist=96.0
+[2026-05-22 09:02:20] MOVE 6: Simen (purple) 96->55 [0.00ms]
+[2026-05-22 09:02:20] SCORE Harald (yellow): Final=197.2, Time=99.2, Moves(3)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-22 09:02:20] SCORE Simen (purple): Final=196.5, Time=98.5, Moves(3)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-22 09:02:20] MOVE 7: Harald (yellow) 12->37 [0.00ms]
+[2026-05-22 09:02:20] SCORE Harald (yellow): Final=199.1, Time=99.1, Moves(4)=0.0, Pins(0)=0.0, Dist=100.0
+[2026-05-22 09:02:20] SCORE Simen (purple): Final=196.5, Time=98.5, Moves(3)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-22 09:02:20] MOVE 8: Simen (purple) 84->82 [0.00ms]
+[2026-05-22 09:02:20] SCORE Harald (yellow): Final=199.1, Time=99.1, Moves(4)=0.0, Pins(0)=0.0, Dist=100.0
+[2026-05-22 09:02:20] SCORE Simen (purple): Final=198.0, Time=98.0, Moves(4)=0.0, Pins(0)=0.0, Dist=100.0
+[2026-05-22 09:02:20] MOVE 9: Harald (yellow) 25->27 [0.00ms]
+[2026-05-22 09:02:20] SCORE Harald (yellow): Final=201.0, Time=99.0, Moves(5)=0.0, Pins(0)=0.0, Dist=102.0
+[2026-05-22 09:02:20] SCORE Simen (purple): Final=198.0, Time=98.0, Moves(4)=0.0, Pins(0)=0.0, Dist=100.0
+[2026-05-22 09:02:21] MOVE 10: Simen (purple) 95->72 [0.00ms]
+[2026-05-22 09:02:21] SCORE Harald (yellow): Final=201.0, Time=99.0, Moves(5)=0.0, Pins(0)=0.0, Dist=102.0
+[2026-05-22 09:02:21] SCORE Simen (purple): Final=199.5, Time=97.5, Moves(5)=0.0, Pins(0)=0.0, Dist=102.0
+[2026-05-22 09:02:21] MOVE 11: Harald (yellow) 36->15 [0.00ms]
+[2026-05-22 09:02:21] SCORE Harald (yellow): Final=203.0, Time=99.0, Moves(6)=0.0, Pins(0)=0.0, Dist=104.0
+[2026-05-22 09:02:21] SCORE Simen (purple): Final=199.5, Time=97.5, Moves(5)=0.0, Pins(0)=0.0, Dist=102.0
+[2026-05-22 09:02:22] MOVE 12: Simen (purple) 108->106 [0.00ms]
+[2026-05-22 09:02:22] SCORE Harald (yellow): Final=203.0, Time=99.0, Moves(6)=0.0, Pins(0)=0.0, Dist=104.0
+[2026-05-22 09:02:22] SCORE Simen (purple): Final=201.0, Time=97.0, Moves(6)=0.0, Pins(0)=0.0, Dist=104.0
+[2026-05-22 09:02:22] MOVE 13: Harald (yellow) 13->38 [0.00ms]
+[2026-05-22 09:02:22] SCORE Harald (yellow): Final=205.0, Time=99.0, Moves(7)=0.0, Pins(0)=0.0, Dist=106.0
+[2026-05-22 09:02:22] SCORE Simen (purple): Final=201.0, Time=97.0, Moves(6)=0.0, Pins(0)=0.0, Dist=104.0
+[2026-05-22 09:02:22] MOVE 14: Simen (purple) 74->54 [0.00ms]
+[2026-05-22 09:02:22] SCORE Harald (yellow): Final=205.0, Time=99.0, Moves(7)=0.0, Pins(0)=0.0, Dist=106.0
+[2026-05-22 09:02:22] SCORE Simen (purple): Final=202.5, Time=96.5, Moves(7)=0.0, Pins(0)=0.0, Dist=106.0
+[2026-05-22 09:02:22] MOVE 15: Harald (yellow) 46->66 [0.00ms]
+[2026-05-22 09:02:22] SCORE Harald (yellow): Final=206.9, Time=98.9, Moves(8)=0.0, Pins(0)=0.0, Dist=108.0
+[2026-05-22 09:02:22] SCORE Simen (purple): Final=202.5, Time=96.5, Moves(7)=0.0, Pins(0)=0.0, Dist=106.0
+[2026-05-22 09:02:23] MOVE 16: Simen (purple) 107->105 [0.00ms]
+[2026-05-22 09:02:23] SCORE Harald (yellow): Final=206.9, Time=98.9, Moves(8)=0.0, Pins(0)=0.0, Dist=108.0
+[2026-05-22 09:02:23] SCORE Simen (purple): Final=204.0, Time=96.0, Moves(8)=0.0, Pins(0)=0.0, Dist=108.0
+[2026-05-22 09:02:23] MOVE 17: Harald (yellow) 26->67 [0.00ms]
+[2026-05-22 09:02:23] SCORE Harald (yellow): Final=208.8, Time=98.8, Moves(9)=0.0, Pins(0)=0.0, Dist=110.0
+[2026-05-22 09:02:23] SCORE Simen (purple): Final=204.0, Time=96.0, Moves(8)=0.0, Pins(0)=0.0, Dist=108.0
+[2026-05-22 09:02:23] MOVE 18: Simen (purple) 55->92 [0.00ms]
+[2026-05-22 09:02:23] SCORE Harald (yellow): Final=208.8, Time=98.8, Moves(9)=0.0, Pins(0)=0.0, Dist=110.0
+[2026-05-22 09:02:23] SCORE Simen (purple): Final=205.5, Time=95.5, Moves(9)=0.0, Pins(0)=0.0, Dist=110.0
+[2026-05-22 09:02:23] MOVE 19: Harald (yellow) 37->39 [0.00ms]
+[2026-05-22 09:02:23] SCORE Harald (yellow): Final=210.8, Time=98.8, Moves(10)=0.0, Pins(0)=0.0, Dist=112.0
+[2026-05-22 09:02:23] SCORE Simen (purple): Final=205.5, Time=95.5, Moves(9)=0.0, Pins(0)=0.0, Dist=110.0
+[2026-05-22 09:02:24] MOVE 20: Simen (purple) 72->91 [0.00ms]
+[2026-05-22 09:02:24] SCORE Harald (yellow): Final=210.8, Time=98.8, Moves(10)=0.0, Pins(0)=0.0, Dist=112.0
+[2026-05-22 09:02:24] SCORE Simen (purple): Final=207.0, Time=95.0, Moves(10)=0.0, Pins(0)=0.0, Dist=112.0
+[2026-05-22 09:02:24] MOVE 21: Harald (yellow) 27->50 [0.00ms]
+[2026-05-22 09:02:24] SCORE Harald (yellow): Final=212.7, Time=98.7, Moves(11)=0.0, Pins(0)=0.0, Dist=114.0
+[2026-05-22 09:02:24] SCORE Simen (purple): Final=207.0, Time=95.0, Moves(10)=0.0, Pins(0)=0.0, Dist=112.0
+[2026-05-22 09:02:24] MOVE 22: Simen (purple) 106->79 [0.00ms]
+[2026-05-22 09:02:24] SCORE Harald (yellow): Final=212.7, Time=98.7, Moves(11)=0.0, Pins(0)=0.0, Dist=114.0
+[2026-05-22 09:02:24] SCORE Simen (purple): Final=210.5, Time=94.5, Moves(11)=0.0, Pins(0)=0.0, Dist=116.0
+[2026-05-22 09:02:24] MOVE 23: Harald (yellow) 14->16 [0.00ms]
+[2026-05-22 09:02:24] SCORE Harald (yellow): Final=214.7, Time=98.7, Moves(12)=0.0, Pins(0)=0.0, Dist=116.0
+[2026-05-22 09:02:24] SCORE Simen (purple): Final=210.5, Time=94.5, Moves(11)=0.0, Pins(0)=0.0, Dist=116.0
+[2026-05-22 09:02:25] MOVE 24: Simen (purple) 105->57 [0.00ms]
+[2026-05-22 09:02:25] SCORE Harald (yellow): Final=214.7, Time=98.7, Moves(12)=0.0, Pins(0)=0.0, Dist=116.0
+[2026-05-22 09:02:25] SCORE Simen (purple): Final=216.0, Time=94.0, Moves(12)=0.0, Pins(0)=0.0, Dist=122.0
+[2026-05-22 09:02:25] MOVE 25: Harald (yellow) 66->29 [0.00ms]
+[2026-05-22 09:02:25] SCORE Harald (yellow): Final=216.6, Time=98.6, Moves(13)=0.0, Pins(0)=0.0, Dist=118.0
+[2026-05-22 09:02:25] SCORE Simen (purple): Final=216.0, Time=94.0, Moves(12)=0.0, Pins(0)=0.0, Dist=122.0
+[2026-05-22 09:02:25] MOVE 26: Simen (purple) 91->46 [0.00ms]
+[2026-05-22 09:02:25] SCORE Harald (yellow): Final=216.6, Time=98.6, Moves(13)=0.0, Pins(0)=0.0, Dist=118.0
+[2026-05-22 09:02:25] SCORE Simen (purple): Final=321.5, Time=93.5, Moves(13)=0.0, Pins(1)=100.0, Dist=128.0
+[2026-05-22 09:02:26] MOVE 27: Harald (yellow) 29->95 [0.00ms]
+[2026-05-22 09:02:26] SCORE Harald (yellow): Final=322.1, Time=98.1, Moves(14)=0.0, Pins(1)=100.0, Dist=124.0
+[2026-05-22 09:02:26] SCORE Simen (purple): Final=321.5, Time=93.5, Moves(13)=0.0, Pins(1)=100.0, Dist=128.0
+[2026-05-22 09:02:27] MOVE 28: Simen (purple) 83->104 [0.00ms]
+[2026-05-22 09:02:27] SCORE Harald (yellow): Final=322.1, Time=98.1, Moves(14)=0.0, Pins(1)=100.0, Dist=124.0
+[2026-05-22 09:02:27] SCORE Simen (purple): Final=322.9, Time=92.9, Moves(14)=0.0, Pins(1)=100.0, Dist=130.0
+[2026-05-22 09:02:27] MOVE 29: Harald (yellow) 50->72 [0.00ms]
+[2026-05-22 09:02:27] SCORE Harald (yellow): Final=325.5, Time=97.5, Moves(15)=0.0, Pins(1)=100.0, Dist=128.0
+[2026-05-22 09:02:27] SCORE Simen (purple): Final=322.9, Time=92.9, Moves(14)=0.0, Pins(1)=100.0, Dist=130.0
+[2026-05-22 09:02:28] MOVE 30: Simen (purple) 64->43 [0.00ms]
+[2026-05-22 09:02:28] SCORE Harald (yellow): Final=325.5, Time=97.5, Moves(15)=0.0, Pins(1)=100.0, Dist=128.0
+[2026-05-22 09:02:28] SCORE Simen (purple): Final=324.4, Time=92.4, Moves(15)=0.0, Pins(1)=100.0, Dist=132.0
+[2026-05-22 09:02:28] MOVE 31: Harald (yellow) 56->58 [0.00ms]
+[2026-05-22 09:02:28] SCORE Harald (yellow): Final=327.4, Time=97.4, Moves(16)=0.0, Pins(1)=100.0, Dist=130.0
+[2026-05-22 09:02:28] SCORE Simen (purple): Final=324.4, Time=92.4, Moves(15)=0.0, Pins(1)=100.0, Dist=132.0
+[2026-05-22 09:02:28] MOVE 32: Simen (purple) 82->42 [0.00ms]
+[2026-05-22 09:02:28] SCORE Harald (yellow): Final=327.4, Time=97.4, Moves(16)=0.0, Pins(1)=100.0, Dist=130.0
+[2026-05-22 09:02:28] SCORE Simen (purple): Final=325.9, Time=91.9, Moves(16)=0.0, Pins(1)=100.0, Dist=134.0
+[2026-05-22 09:02:29] MOVE 33: Harald (yellow) 38->40 [0.00ms]
+[2026-05-22 09:02:29] SCORE Harald (yellow): Final=328.9, Time=96.9, Moves(17)=0.0, Pins(1)=100.0, Dist=132.0
+[2026-05-22 09:02:29] SCORE Simen (purple): Final=325.9, Time=91.9, Moves(16)=0.0, Pins(1)=100.0, Dist=134.0
+[2026-05-22 09:02:29] MOVE 34: Simen (purple) 43->41 [0.00ms]
+[2026-05-22 09:02:29] SCORE Harald (yellow): Final=328.9, Time=96.9, Moves(17)=0.0, Pins(1)=100.0, Dist=132.0
+[2026-05-22 09:02:29] SCORE Simen (purple): Final=327.4, Time=91.4, Moves(17)=0.0, Pins(1)=100.0, Dist=136.0
+[2026-05-22 09:02:29] MOVE 35: Harald (yellow) 67->55 [0.00ms]
+[2026-05-22 09:02:29] SCORE Harald (yellow): Final=333.8, Time=96.8, Moves(18)=0.0, Pins(1)=100.0, Dist=137.0
+[2026-05-22 09:02:29] SCORE Simen (purple): Final=327.4, Time=91.4, Moves(17)=0.0, Pins(1)=100.0, Dist=136.0
+[2026-05-22 09:02:30] MOVE 36: Simen (purple) 109->108 [0.00ms]
+[2026-05-22 09:02:30] SCORE Harald (yellow): Final=333.8, Time=96.8, Moves(18)=0.0, Pins(1)=100.0, Dist=137.0
+[2026-05-22 09:02:30] SCORE Simen (purple): Final=327.8, Time=90.8, Moves(18)=0.0, Pins(1)=100.0, Dist=137.0
+[2026-05-22 09:02:30] MOVE 37: Harald (yellow) 15->17 [0.00ms]
+[2026-05-22 09:02:30] SCORE Harald (yellow): Final=335.3, Time=96.3, Moves(19)=0.0, Pins(1)=100.0, Dist=139.0
+[2026-05-22 09:02:30] SCORE Simen (purple): Final=327.8, Time=90.8, Moves(18)=0.0, Pins(1)=100.0, Dist=137.0
+[2026-05-22 09:02:31] MOVE 38: Simen (purple) 108->62 [0.00ms]
+[2026-05-22 09:02:31] SCORE Harald (yellow): Final=335.3, Time=96.3, Moves(19)=0.0, Pins(1)=100.0, Dist=139.0
+[2026-05-22 09:02:31] SCORE Simen (purple): Final=331.3, Time=90.3, Moves(19)=0.0, Pins(1)=100.0, Dist=141.0
+[2026-05-22 09:02:32] MOVE 39: Harald (yellow) 16->18 [0.00ms]
+[2026-05-22 09:02:32] SCORE Harald (yellow): Final=336.7, Time=95.7, Moves(20)=0.0, Pins(1)=100.0, Dist=141.0
+[2026-05-22 09:02:32] SCORE Simen (purple): Final=331.3, Time=90.3, Moves(19)=0.0, Pins(1)=100.0, Dist=141.0
+[2026-05-22 09:02:32] MOVE 40: Simen (purple) 97->85 [0.00ms]
+[2026-05-22 09:02:32] SCORE Harald (yellow): Final=336.7, Time=95.7, Moves(20)=0.0, Pins(1)=100.0, Dist=141.0
+[2026-05-22 09:02:32] SCORE Simen (purple): Final=331.7, Time=89.7, Moves(20)=0.0, Pins(1)=100.0, Dist=142.0
+[2026-05-22 09:02:33] MOVE 41: Harald (yellow) 11->12 [0.00ms]
+[2026-05-22 09:02:33] SCORE Harald (yellow): Final=337.2, Time=95.2, Moves(21)=0.0, Pins(1)=100.0, Dist=142.0
+[2026-05-22 09:02:33] SCORE Simen (purple): Final=331.7, Time=89.7, Moves(20)=0.0, Pins(1)=100.0, Dist=142.0
+[2026-05-22 09:02:33] MOVE 42: Simen (purple) 85->74 [0.00ms]
+[2026-05-22 09:02:33] SCORE Harald (yellow): Final=337.2, Time=95.2, Moves(21)=0.0, Pins(1)=100.0, Dist=142.0
+[2026-05-22 09:02:33] SCORE Simen (purple): Final=332.2, Time=89.2, Moves(21)=0.0, Pins(1)=100.0, Dist=143.0
+[2026-05-22 09:02:34] MOVE 43: Harald (yellow) 12->13 [0.00ms]
+[2026-05-22 09:02:34] SCORE Harald (yellow): Final=337.6, Time=94.6, Moves(22)=0.0, Pins(1)=100.0, Dist=143.0
+[2026-05-22 09:02:34] SCORE Simen (purple): Final=332.2, Time=89.2, Moves(21)=0.0, Pins(1)=100.0, Dist=143.0
+[2026-05-22 09:02:34] MOVE 44: Simen (purple) 74->64 [0.00ms]
+[2026-05-22 09:02:34] SCORE Harald (yellow): Final=337.6, Time=94.6, Moves(22)=0.0, Pins(1)=100.0, Dist=143.0
+[2026-05-22 09:02:34] SCORE Simen (purple): Final=332.6, Time=88.6, Moves(22)=0.0, Pins(1)=100.0, Dist=144.0
+[2026-05-22 09:02:35] MOVE 45: Harald (yellow) 13->14 [0.00ms]
+[2026-05-22 09:02:35] SCORE Harald (yellow): Final=338.1, Time=94.1, Moves(23)=0.0, Pins(1)=100.0, Dist=144.0
+[2026-05-22 09:02:35] SCORE Simen (purple): Final=332.6, Time=88.6, Moves(22)=0.0, Pins(1)=100.0, Dist=144.0
+[2026-05-22 09:02:35] MOVE 46: Simen (purple) 64->43 [0.00ms]
+[2026-05-22 09:02:35] SCORE Harald (yellow): Final=338.1, Time=94.1, Moves(23)=0.0, Pins(1)=100.0, Dist=144.0
+[2026-05-22 09:02:35] SCORE Simen (purple): Final=334.1, Time=88.1, Moves(23)=0.0, Pins(1)=100.0, Dist=146.0
+[2026-05-22 09:02:36] MOVE 47: Harald (yellow) 23->35 [0.00ms]
+[2026-05-22 09:02:36] SCORE Harald (yellow): Final=338.6, Time=93.6, Moves(24)=0.0, Pins(1)=100.0, Dist=145.0
+[2026-05-22 09:02:36] SCORE Simen (purple): Final=334.1, Time=88.1, Moves(23)=0.0, Pins(1)=100.0, Dist=146.0
+[2026-05-22 09:02:36] MOVE 48: Simen (purple) 54->27 [0.00ms]
+[2026-05-22 09:02:36] SCORE Harald (yellow): Final=338.6, Time=93.6, Moves(24)=0.0, Pins(1)=100.0, Dist=145.0
+[2026-05-22 09:02:36] SCORE Simen (purple): Final=340.0, Time=88.0, Moves(24)=0.0, Pins(1)=100.0, Dist=152.0
+[2026-05-22 09:02:37] MOVE 49: Harald (yellow) 35->56 [0.00ms]
+[2026-05-22 09:02:37] SCORE Harald (yellow): Final=340.0, Time=93.0, Moves(25)=0.0, Pins(1)=100.0, Dist=147.0
+[2026-05-22 09:02:37] SCORE Simen (purple): Final=340.0, Time=88.0, Moves(24)=0.0, Pins(1)=100.0, Dist=152.0
+[2026-05-22 09:02:37] MOVE 50: Simen (purple) 27->26 [0.00ms]
+[2026-05-22 09:02:37] SCORE Harald (yellow): Final=340.0, Time=93.0, Moves(25)=0.0, Pins(1)=100.0, Dist=147.0
+[2026-05-22 09:02:37] SCORE Simen (purple): Final=341.0, Time=88.0, Moves(25)=0.0, Pins(1)=100.0, Dist=153.0
+[2026-05-22 09:02:37] MOVE 51: Harald (yellow) 17->19 [0.00ms]
+[2026-05-22 09:02:37] SCORE Harald (yellow): Final=340.5, Time=92.5, Moves(26)=0.0, Pins(1)=100.0, Dist=148.0
+[2026-05-22 09:02:37] SCORE Simen (purple): Final=341.0, Time=88.0, Moves(25)=0.0, Pins(1)=100.0, Dist=153.0
+[2026-05-22 09:02:37] MOVE 52: Simen (purple) 26->25 [0.00ms]
+[2026-05-22 09:02:37] SCORE Harald (yellow): Final=340.5, Time=92.5, Moves(26)=0.0, Pins(1)=100.0, Dist=148.0
+[2026-05-22 09:02:37] SCORE Simen (purple): Final=441.9, Time=87.9, Moves(26)=0.0, Pins(2)=200.0, Dist=154.0
+[2026-05-22 09:02:38] MOVE 53: Harald (yellow) 14->15 [0.00ms]
+[2026-05-22 09:02:38] SCORE Harald (yellow): Final=341.0, Time=92.0, Moves(27)=0.0, Pins(1)=100.0, Dist=149.0
+[2026-05-22 09:02:38] SCORE Simen (purple): Final=441.9, Time=87.9, Moves(26)=0.0, Pins(2)=200.0, Dist=154.0
+[2026-05-22 09:02:38] MOVE 54: Simen (purple) 57->47 [0.00ms]
+[2026-05-22 09:02:38] SCORE Harald (yellow): Final=341.0, Time=92.0, Moves(27)=0.0, Pins(1)=100.0, Dist=149.0
+[2026-05-22 09:02:38] SCORE Simen (purple): Final=442.9, Time=87.9, Moves(27)=0.0, Pins(2)=200.0, Dist=155.0
+[2026-05-22 09:02:38] MOVE 55: Harald (yellow) 72->73 [0.00ms]
+[2026-05-22 09:02:38] SCORE Harald (yellow): Final=341.5, Time=91.5, Moves(28)=0.0, Pins(1)=100.0, Dist=150.0
+[2026-05-22 09:02:38] SCORE Simen (purple): Final=442.9, Time=87.9, Moves(27)=0.0, Pins(2)=200.0, Dist=155.0
+[2026-05-22 09:02:38] MOVE 56: Simen (purple) 47->36 [0.00ms]
+[2026-05-22 09:02:38] SCORE Harald (yellow): Final=341.5, Time=91.5, Moves(28)=0.0, Pins(1)=100.0, Dist=150.0
+[2026-05-22 09:02:38] SCORE Simen (purple): Final=543.8, Time=87.8, Moves(28)=0.0, Pins(3)=300.0, Dist=156.0
+[2026-05-22 09:02:39] MOVE 57: Harald (yellow) 73->84 [0.00ms]
+[2026-05-22 09:02:39] SCORE Harald (yellow): Final=442.0, Time=91.0, Moves(29)=0.0, Pins(2)=200.0, Dist=151.0
+[2026-05-22 09:02:39] SCORE Simen (purple): Final=543.8, Time=87.8, Moves(28)=0.0, Pins(3)=300.0, Dist=156.0
+[2026-05-22 09:02:39] MOVE 58: Simen (purple) 104->91 [0.00ms]
+[2026-05-22 09:02:39] SCORE Harald (yellow): Final=442.0, Time=91.0, Moves(29)=0.0, Pins(2)=200.0, Dist=151.0
+[2026-05-22 09:02:39] SCORE Simen (purple): Final=544.8, Time=87.8, Moves(29)=0.0, Pins(3)=300.0, Dist=157.0
+[2026-05-22 09:02:39] MOVE 59: Harald (yellow) 55->64 [0.00ms]
+[2026-05-22 09:02:39] SCORE Harald (yellow): Final=442.5, Time=90.5, Moves(30)=0.0, Pins(2)=200.0, Dist=152.0
+[2026-05-22 09:02:39] SCORE Simen (purple): Final=544.8, Time=87.8, Moves(29)=0.0, Pins(3)=300.0, Dist=157.0
+[2026-05-22 09:02:39] MOVE 60: Simen (purple) 91->48 [0.00ms]
+[2026-05-22 09:02:39] SCORE Harald (yellow): Final=442.5, Time=90.5, Moves(30)=0.0, Pins(2)=200.0, Dist=152.0
+[2026-05-22 09:02:39] SCORE Simen (purple): Final=548.7, Time=87.7, Moves(30)=0.0, Pins(3)=300.0, Dist=161.0
+[2026-05-22 09:02:40] MOVE 61: Harald (yellow) 64->74 [0.00ms]
+[2026-05-22 09:02:40] SCORE Harald (yellow): Final=543.0, Time=90.0, Moves(31)=0.0, Pins(3)=300.0, Dist=153.0
+[2026-05-22 09:02:40] SCORE Simen (purple): Final=548.7, Time=87.7, Moves(30)=0.0, Pins(3)=300.0, Dist=161.0
+[2026-05-22 09:02:40] MOVE 62: Simen (purple) 42->30 [0.00ms]
+[2026-05-22 09:02:40] SCORE Harald (yellow): Final=543.0, Time=90.0, Moves(31)=0.0, Pins(3)=300.0, Dist=153.0
+[2026-05-22 09:02:40] SCORE Simen (purple): Final=549.7, Time=87.7, Moves(31)=0.0, Pins(3)=300.0, Dist=162.0
+[2026-05-22 09:02:40] MOVE 63: Harald (yellow) 40->44 [0.01ms]
+[2026-05-22 09:02:40] SCORE Harald (yellow): Final=545.5, Time=89.5, Moves(32)=0.0, Pins(3)=300.0, Dist=156.0
+[2026-05-22 09:02:40] SCORE Simen (purple): Final=549.7, Time=87.7, Moves(31)=0.0, Pins(3)=300.0, Dist=162.0
+[2026-05-22 09:02:40] MOVE 64: Simen (purple) 30->29 [0.00ms]
+[2026-05-22 09:02:40] SCORE Harald (yellow): Final=545.5, Time=89.5, Moves(32)=0.0, Pins(3)=300.0, Dist=156.0
+[2026-05-22 09:02:40] SCORE Simen (purple): Final=550.7, Time=87.7, Moves(32)=0.0, Pins(3)=300.0, Dist=163.0
+[2026-05-22 09:02:41] MOVE 65: Harald (yellow) 19->42 [0.00ms]
+[2026-05-22 09:02:41] SCORE Harald (yellow): Final=546.0, Time=88.9, Moves(33)=0.0, Pins(3)=300.0, Dist=157.0
+[2026-05-22 09:02:41] SCORE Simen (purple): Final=550.7, Time=87.7, Moves(32)=0.0, Pins(3)=300.0, Dist=163.0
+[2026-05-22 09:02:42] MOVE 66: Simen (purple) 41->14 [0.00ms]
+[2026-05-22 09:02:42] SCORE Harald (yellow): Final=546.0, Time=88.9, Moves(33)=0.0, Pins(3)=300.0, Dist=157.0
+[2026-05-22 09:02:42] SCORE Simen (purple): Final=554.1, Time=87.1, Moves(33)=0.0, Pins(3)=300.0, Dist=167.0
+[2026-05-22 09:02:42] MOVE 67: Harald (yellow) 42->53 [0.00ms]
+[2026-05-22 09:02:42] SCORE Harald (yellow): Final=546.4, Time=88.4, Moves(34)=0.0, Pins(3)=300.0, Dist=158.0
+[2026-05-22 09:02:42] SCORE Simen (purple): Final=554.1, Time=87.1, Moves(33)=0.0, Pins(3)=300.0, Dist=167.0
+[2026-05-22 09:02:43] MOVE 68: Simen (purple) 14->13 [0.00ms]
+[2026-05-22 09:02:43] SCORE Harald (yellow): Final=546.4, Time=88.4, Moves(34)=0.0, Pins(3)=300.0, Dist=158.0
+[2026-05-22 09:02:43] SCORE Simen (purple): Final=654.6, Time=86.5, Moves(34)=0.0, Pins(4)=400.0, Dist=168.0
+[2026-05-22 09:02:43] MOVE 69: Harald (yellow) 56->41 [0.00ms]
+[2026-05-22 09:02:43] SCORE Harald (yellow): Final=549.9, Time=87.8, Moves(35)=0.0, Pins(3)=300.0, Dist=162.0
+[2026-05-22 09:02:43] SCORE Simen (purple): Final=654.6, Time=86.5, Moves(34)=0.0, Pins(4)=400.0, Dist=168.0
+[2026-05-22 09:02:44] MOVE 70: Simen (purple) 29->28 [0.00ms]
+[2026-05-22 09:02:44] SCORE Harald (yellow): Final=549.9, Time=87.8, Moves(35)=0.0, Pins(3)=300.0, Dist=162.0
+[2026-05-22 09:02:44] SCORE Simen (purple): Final=655.0, Time=86.0, Moves(35)=0.0, Pins(4)=400.0, Dist=169.0
+[2026-05-22 09:02:44] MOVE 71: Harald (yellow) 15->63 [0.00ms]
+[2026-05-22 09:02:44] SCORE Harald (yellow): Final=555.3, Time=87.3, Moves(36)=0.1, Pins(3)=300.0, Dist=168.0
+[2026-05-22 09:02:44] SCORE Simen (purple): Final=655.0, Time=86.0, Moves(35)=0.0, Pins(4)=400.0, Dist=169.0
+[2026-05-22 09:02:45] MOVE 72: Simen (purple) 28->24 [0.00ms]
+[2026-05-22 09:02:45] SCORE Harald (yellow): Final=555.3, Time=87.3, Moves(36)=0.1, Pins(3)=300.0, Dist=168.0
+[2026-05-22 09:02:45] SCORE Simen (purple): Final=757.6, Time=85.5, Moves(36)=0.1, Pins(5)=500.0, Dist=172.0
+[2026-05-22 09:02:45] MOVE 73: Harald (yellow) 53->96 [0.00ms]
+[2026-05-22 09:02:45] SCORE Harald (yellow): Final=657.8, Time=86.7, Moves(37)=0.1, Pins(4)=400.0, Dist=171.0
+[2026-05-22 09:02:45] SCORE Simen (purple): Final=757.6, Time=85.5, Moves(36)=0.1, Pins(5)=500.0, Dist=172.0
+[2026-05-22 09:02:46] MOVE 74: Simen (purple) 25->23 [0.00ms]
+[2026-05-22 09:02:46] SCORE Harald (yellow): Final=657.8, Time=86.7, Moves(37)=0.1, Pins(4)=400.0, Dist=171.0
+[2026-05-22 09:02:46] SCORE Simen (purple): Final=757.1, Time=84.9, Moves(37)=0.1, Pins(5)=500.0, Dist=172.0
+[2026-05-22 09:02:47] MOVE 75: Harald (yellow) 84->109 [0.00ms]
+[2026-05-22 09:02:47] SCORE Harald (yellow): Final=657.4, Time=86.1, Moves(38)=0.2, Pins(4)=400.0, Dist=171.0
+[2026-05-22 09:02:47] SCORE Simen (purple): Final=757.1, Time=84.9, Moves(37)=0.1, Pins(5)=500.0, Dist=172.0
+[2026-05-22 09:02:47] MOVE 76: Simen (purple) 36->11 [0.00ms]
+[2026-05-22 09:02:47] SCORE Harald (yellow): Final=657.4, Time=86.1, Moves(38)=0.2, Pins(4)=400.0, Dist=171.0
+[2026-05-22 09:02:47] SCORE Simen (purple): Final=756.6, Time=84.3, Moves(38)=0.2, Pins(5)=500.0, Dist=172.0
+[2026-05-22 09:02:48] MOVE 77: Harald (yellow) 95->97 [0.00ms]
+[2026-05-22 09:02:48] SCORE Harald (yellow): Final=657.0, Time=85.6, Moves(39)=0.3, Pins(4)=400.0, Dist=171.0
+[2026-05-22 09:02:48] SCORE Simen (purple): Final=756.6, Time=84.3, Moves(38)=0.2, Pins(5)=500.0, Dist=172.0
+[2026-05-22 09:02:48] MOVE 78: Simen (purple) 48->37 [0.00ms]
+[2026-05-22 09:02:48] SCORE Harald (yellow): Final=657.0, Time=85.6, Moves(39)=0.3, Pins(4)=400.0, Dist=171.0
+[2026-05-22 09:02:48] SCORE Simen (purple): Final=757.6, Time=84.3, Moves(39)=0.3, Pins(5)=500.0, Dist=173.0
+[2026-05-22 09:02:48] MOVE 79: Harald (yellow) 63->73 [0.00ms]
+[2026-05-22 09:02:48] SCORE Harald (yellow): Final=657.6, Time=85.1, Moves(40)=0.5, Pins(4)=400.0, Dist=172.0
+[2026-05-22 09:02:48] SCORE Simen (purple): Final=757.6, Time=84.3, Moves(39)=0.3, Pins(5)=500.0, Dist=173.0
+[2026-05-22 09:02:48] MOVE 80: Simen (purple) 37->25 [0.00ms]
+[2026-05-22 09:02:48] SCORE Harald (yellow): Final=657.6, Time=85.1, Moves(40)=0.5, Pins(4)=400.0, Dist=172.0
+[2026-05-22 09:02:48] SCORE Simen (purple): Final=858.7, Time=84.2, Moves(40)=0.5, Pins(6)=600.0, Dist=174.0
+[2026-05-22 09:02:49] MOVE 81: Harald (yellow) 73->84 [0.00ms]
+[2026-05-22 09:02:49] SCORE Harald (yellow): Final=758.3, Time=84.7, Moves(41)=0.6, Pins(5)=500.0, Dist=173.0
+[2026-05-22 09:02:49] SCORE Simen (purple): Final=858.7, Time=84.2, Moves(40)=0.5, Pins(6)=600.0, Dist=174.0
+[2026-05-22 09:02:49] MOVE 82: Simen (purple) 43->42 [0.00ms]
+[2026-05-22 09:02:49] SCORE Harald (yellow): Final=758.3, Time=84.7, Moves(41)=0.6, Pins(5)=500.0, Dist=173.0
+[2026-05-22 09:02:49] SCORE Simen (purple): Final=859.8, Time=84.2, Moves(41)=0.6, Pins(6)=600.0, Dist=175.0
+[2026-05-22 09:02:49] MOVE 83: Harald (yellow) 41->45 [0.00ms]
+[2026-05-22 09:02:49] SCORE Harald (yellow): Final=759.9, Time=84.1, Moves(42)=0.8, Pins(5)=500.0, Dist=175.0
+[2026-05-22 09:02:49] SCORE Simen (purple): Final=859.8, Time=84.2, Moves(41)=0.6, Pins(6)=600.0, Dist=175.0
+[2026-05-22 09:02:50] MOVE 84: Simen (purple) 42->41 [0.00ms]
+[2026-05-22 09:02:50] SCORE Harald (yellow): Final=759.9, Time=84.1, Moves(42)=0.8, Pins(5)=500.0, Dist=175.0
+[2026-05-22 09:02:50] SCORE Simen (purple): Final=860.3, Time=83.6, Moves(42)=0.8, Pins(6)=600.0, Dist=176.0
+[2026-05-22 09:02:50] MOVE 85: Harald (yellow) 44->54 [0.00ms]
+[2026-05-22 09:02:50] SCORE Harald (yellow): Final=760.5, Time=83.6, Moves(43)=0.9, Pins(5)=500.0, Dist=176.0
+[2026-05-22 09:02:50] SCORE Simen (purple): Final=860.3, Time=83.6, Moves(42)=0.8, Pins(6)=600.0, Dist=176.0
+[2026-05-22 09:02:50] MOVE 86: Simen (purple) 41->40 [0.00ms]
+[2026-05-22 09:02:50] SCORE Harald (yellow): Final=760.5, Time=83.6, Moves(43)=0.9, Pins(5)=500.0, Dist=176.0
+[2026-05-22 09:02:50] SCORE Simen (purple): Final=861.4, Time=83.5, Moves(43)=0.9, Pins(6)=600.0, Dist=177.0
+[2026-05-22 09:02:51] MOVE 87: Harald (yellow) 39->41 [0.00ms]
+[2026-05-22 09:02:51] SCORE Harald (yellow): Final=762.1, Time=83.1, Moves(44)=1.0, Pins(5)=500.0, Dist=178.0
+[2026-05-22 09:02:51] SCORE Simen (purple): Final=861.4, Time=83.5, Moves(43)=0.9, Pins(6)=600.0, Dist=177.0
+[2026-05-22 09:02:51] MOVE 88: Simen (purple) 40->39 [0.00ms]
+[2026-05-22 09:02:51] SCORE Harald (yellow): Final=762.1, Time=83.1, Moves(44)=1.0, Pins(5)=500.0, Dist=178.0
+[2026-05-22 09:02:51] SCORE Simen (purple): Final=862.5, Time=83.5, Moves(44)=1.0, Pins(6)=600.0, Dist=178.0
+[2026-05-22 09:02:52] MOVE 89: Harald (yellow) 54->64 [0.00ms]
+[2026-05-22 09:02:52] SCORE Harald (yellow): Final=762.6, Time=82.6, Moves(45)=1.0, Pins(5)=500.0, Dist=179.0
+[2026-05-22 09:02:52] SCORE Simen (purple): Final=862.5, Time=83.5, Moves(44)=1.0, Pins(6)=600.0, Dist=178.0
+[2026-05-22 09:02:52] MOVE 90: Simen (purple) 39->38 [0.00ms]
+[2026-05-22 09:02:52] SCORE Harald (yellow): Final=762.6, Time=82.6, Moves(45)=1.0, Pins(5)=500.0, Dist=179.0
+[2026-05-22 09:02:52] SCORE Simen (purple): Final=862.9, Time=82.9, Moves(45)=1.0, Pins(6)=600.0, Dist=179.0
+[2026-05-22 09:02:53] MOVE 91: Harald (yellow) 64->110 [0.00ms]
+[2026-05-22 09:02:53] SCORE Harald (yellow): Final=863.1, Time=82.1, Moves(46)=1.0, Pins(6)=600.0, Dist=180.0
+[2026-05-22 09:02:53] SCORE Simen (purple): Final=862.9, Time=82.9, Moves(45)=1.0, Pins(6)=600.0, Dist=179.0
+[2026-05-22 09:02:53] MOVE 92: Simen (purple) 38->37 [0.00ms]
+[2026-05-22 09:02:53] SCORE Harald (yellow): Final=863.1, Time=82.1, Moves(46)=1.0, Pins(6)=600.0, Dist=180.0
+[2026-05-22 09:02:53] SCORE Simen (purple): Final=863.9, Time=82.9, Moves(46)=1.0, Pins(6)=600.0, Dist=180.0
+[2026-05-22 09:02:53] MOVE 93: Harald (yellow) 41->52 [0.00ms]
+[2026-05-22 09:02:53] SCORE Harald (yellow): Final=863.6, Time=81.6, Moves(47)=1.0, Pins(6)=600.0, Dist=181.0
+[2026-05-22 09:02:53] SCORE Simen (purple): Final=863.9, Time=82.9, Moves(46)=1.0, Pins(6)=600.0, Dist=180.0
+[2026-05-22 09:02:53] MOVE 94: Simen (purple) 37->10 [0.00ms]
+[2026-05-22 09:02:53] SCORE Harald (yellow): Final=863.6, Time=81.6, Moves(47)=1.0, Pins(6)=600.0, Dist=181.0
+[2026-05-22 09:02:53] SCORE Simen (purple): Final=964.8, Time=82.8, Moves(47)=1.0, Pins(7)=700.0, Dist=181.0
+[2026-05-22 09:02:54] MOVE 95: Harald (yellow) 52->72 [0.00ms]
+[2026-05-22 09:02:54] SCORE Harald (yellow): Final=865.1, Time=81.1, Moves(48)=1.0, Pins(6)=600.0, Dist=183.0
+[2026-05-22 09:02:54] SCORE Simen (purple): Final=964.8, Time=82.8, Moves(47)=1.0, Pins(7)=700.0, Dist=181.0
+[2026-05-22 09:02:54] MOVE 96: Simen (purple) 62->52 [0.00ms]
+[2026-05-22 09:02:54] SCORE Harald (yellow): Final=865.1, Time=81.1, Moves(48)=1.0, Pins(6)=600.0, Dist=183.0
+[2026-05-22 09:02:54] SCORE Simen (purple): Final=965.8, Time=82.8, Moves(48)=1.0, Pins(7)=700.0, Dist=182.0
+[2026-05-22 09:02:54] MOVE 97: Harald (yellow) 72->83 [0.00ms]
+[2026-05-22 09:02:54] SCORE Harald (yellow): Final=865.6, Time=80.6, Moves(49)=1.0, Pins(6)=600.0, Dist=184.0
+[2026-05-22 09:02:54] SCORE Simen (purple): Final=965.8, Time=82.8, Moves(48)=1.0, Pins(7)=700.0, Dist=182.0
+[2026-05-22 09:02:54] MOVE 98: Simen (purple) 52->51 [0.00ms]
+[2026-05-22 09:02:54] SCORE Harald (yellow): Final=865.6, Time=80.6, Moves(49)=1.0, Pins(6)=600.0, Dist=184.0
+[2026-05-22 09:02:54] SCORE Simen (purple): Final=966.7, Time=82.7, Moves(49)=1.0, Pins(7)=700.0, Dist=183.0
+[2026-05-22 09:02:55] MOVE 99: Harald (yellow) 83->85 [0.00ms]
+[2026-05-22 09:02:55] SCORE Harald (yellow): Final=966.1, Time=80.1, Moves(50)=1.0, Pins(7)=700.0, Dist=185.0
+[2026-05-22 09:02:55] SCORE Simen (purple): Final=966.7, Time=82.7, Moves(49)=1.0, Pins(7)=700.0, Dist=183.0
+[2026-05-22 09:02:55] MOVE 100: Simen (purple) 51->40 [0.01ms]
+[2026-05-22 09:02:55] SCORE Harald (yellow): Final=966.1, Time=80.1, Moves(50)=1.0, Pins(7)=700.0, Dist=185.0
+[2026-05-22 09:02:55] SCORE Simen (purple): Final=967.6, Time=82.7, Moves(50)=1.0, Pins(7)=700.0, Dist=184.0
+[2026-05-22 09:02:55] MOVE 101: Harald (yellow) 45->55 [0.00ms]
+[2026-05-22 09:02:55] SCORE Harald (yellow): Final=966.5, Time=79.6, Moves(51)=0.9, Pins(7)=700.0, Dist=186.0
+[2026-05-22 09:02:55] SCORE Simen (purple): Final=967.6, Time=82.7, Moves(50)=1.0, Pins(7)=700.0, Dist=184.0
+[2026-05-22 09:02:55] MOVE 102: Simen (purple) 40->39 [0.01ms]
+[2026-05-22 09:02:55] SCORE Harald (yellow): Final=966.5, Time=79.6, Moves(51)=0.9, Pins(7)=700.0, Dist=186.0
+[2026-05-22 09:02:55] SCORE Simen (purple): Final=968.6, Time=82.6, Moves(51)=0.9, Pins(7)=700.0, Dist=185.0
+[2026-05-22 09:02:56] MOVE 103: Harald (yellow) 55->64 [0.00ms]
+[2026-05-22 09:02:56] SCORE Harald (yellow): Final=967.0, Time=79.1, Moves(52)=0.9, Pins(7)=700.0, Dist=187.0
+[2026-05-22 09:02:56] SCORE Simen (purple): Final=968.6, Time=82.6, Moves(51)=0.9, Pins(7)=700.0, Dist=185.0
+[2026-05-22 09:02:56] MOVE 104: Simen (purple) 39->38 [0.00ms]
+[2026-05-22 09:02:56] SCORE Harald (yellow): Final=967.0, Time=79.1, Moves(52)=0.9, Pins(7)=700.0, Dist=187.0
+[2026-05-22 09:02:56] SCORE Simen (purple): Final=969.5, Time=82.6, Moves(52)=0.9, Pins(7)=700.0, Dist=186.0
+[2026-05-22 09:02:56] MOVE 105: Harald (yellow) 58->59 [0.00ms]
+[2026-05-22 09:02:56] SCORE Harald (yellow): Final=967.4, Time=78.5, Moves(53)=0.9, Pins(7)=700.0, Dist=188.0
+[2026-05-22 09:02:56] SCORE Simen (purple): Final=969.5, Time=82.6, Moves(52)=0.9, Pins(7)=700.0, Dist=186.0
+[2026-05-22 09:02:57] MOVE 106: Simen (purple) 38->37 [0.00ms]
+[2026-05-22 09:02:57] SCORE Harald (yellow): Final=967.4, Time=78.5, Moves(53)=0.9, Pins(7)=700.0, Dist=188.0
+[2026-05-22 09:02:57] SCORE Simen (purple): Final=969.9, Time=82.0, Moves(53)=0.9, Pins(7)=700.0, Dist=187.0
+[2026-05-22 09:02:58] MOVE 107: Harald (yellow) 59->60 [0.00ms]
+[2026-05-22 09:02:58] SCORE Harald (yellow): Final=968.0, Time=78.1, Moves(54)=0.9, Pins(7)=700.0, Dist=189.0
+[2026-05-22 09:02:58] SCORE Simen (purple): Final=969.9, Time=82.0, Moves(53)=0.9, Pins(7)=700.0, Dist=187.0
+[2026-05-22 09:02:58] MOVE 108: Simen (purple) 37->12 [0.00ms]
+[2026-05-22 09:02:58] SCORE Harald (yellow): Final=968.0, Time=78.1, Moves(54)=0.9, Pins(7)=700.0, Dist=189.0
+[2026-05-22 09:02:58] SCORE Simen (purple): Final=1070.8, Time=81.9, Moves(54)=0.9, Pins(8)=800.0, Dist=188.0
+[2026-05-22 09:02:58] MOVE 109: Harald (yellow) 60->61 [0.00ms]
+[2026-05-22 09:02:58] SCORE Harald (yellow): Final=968.4, Time=77.6, Moves(55)=0.9, Pins(7)=700.0, Dist=190.0
+[2026-05-22 09:02:58] SCORE Simen (purple): Final=1070.8, Time=81.9, Moves(54)=0.9, Pins(8)=800.0, Dist=188.0
+[2026-05-22 09:02:58] MOVE 110: Simen (purple) 92->80 [0.00ms]
+[2026-05-22 09:02:58] SCORE Harald (yellow): Final=968.4, Time=77.6, Moves(55)=0.9, Pins(7)=700.0, Dist=190.0
+[2026-05-22 09:02:58] SCORE Simen (purple): Final=1071.7, Time=81.9, Moves(55)=0.9, Pins(8)=800.0, Dist=189.0
+[2026-05-22 09:02:59] MOVE 111: Harald (yellow) 61->62 [0.00ms]
+[2026-05-22 09:02:59] SCORE Harald (yellow): Final=968.9, Time=77.1, Moves(56)=0.8, Pins(7)=700.0, Dist=191.0
+[2026-05-22 09:02:59] SCORE Simen (purple): Final=1071.7, Time=81.9, Moves(55)=0.9, Pins(8)=800.0, Dist=189.0
+[2026-05-22 09:02:59] MOVE 112: Simen (purple) 80->78 [0.00ms]
+[2026-05-22 09:02:59] SCORE Harald (yellow): Final=968.9, Time=77.1, Moves(56)=0.8, Pins(7)=700.0, Dist=191.0
+[2026-05-22 09:02:59] SCORE Simen (purple): Final=1073.6, Time=81.8, Moves(56)=0.8, Pins(8)=800.0, Dist=191.0
+[2026-05-22 09:02:59] MOVE 113: Harald (yellow) 62->72 [0.00ms]
+[2026-05-22 09:02:59] SCORE Harald (yellow): Final=969.4, Time=76.6, Moves(57)=0.8, Pins(7)=700.0, Dist=192.0
+[2026-05-22 09:02:59] SCORE Simen (purple): Final=1073.6, Time=81.8, Moves(56)=0.8, Pins(8)=800.0, Dist=191.0
+[2026-05-22 09:02:59] MOVE 114: Simen (purple) 79->77 [0.00ms]
+[2026-05-22 09:02:59] SCORE Harald (yellow): Final=969.4, Time=76.6, Moves(57)=0.8, Pins(7)=700.0, Dist=192.0
+[2026-05-22 09:02:59] SCORE Simen (purple): Final=1075.5, Time=81.7, Moves(57)=0.8, Pins(8)=800.0, Dist=193.0
+[2026-05-22 09:03:00] MOVE 115: Harald (yellow) 72->83 [0.00ms]
+[2026-05-22 09:03:00] SCORE Harald (yellow): Final=970.0, Time=76.2, Moves(58)=0.8, Pins(7)=700.0, Dist=193.0
+[2026-05-22 09:03:00] SCORE Simen (purple): Final=1075.5, Time=81.7, Moves(57)=0.8, Pins(8)=800.0, Dist=193.0
+[2026-05-22 09:03:00] MOVE 116: Simen (purple) 78->76 [0.00ms]
+[2026-05-22 09:03:00] SCORE Harald (yellow): Final=970.0, Time=76.2, Moves(58)=0.8, Pins(7)=700.0, Dist=193.0
+[2026-05-22 09:03:00] SCORE Simen (purple): Final=1076.4, Time=81.6, Moves(58)=0.8, Pins(8)=800.0, Dist=194.0
+[2026-05-22 09:03:00] MOVE 117: Harald (yellow) 83->95 [0.00ms]
+[2026-05-22 09:03:00] SCORE Harald (yellow): Final=1070.4, Time=75.7, Moves(59)=0.7, Pins(8)=800.0, Dist=194.0
+[2026-05-22 09:03:00] SCORE Simen (purple): Final=1076.4, Time=81.6, Moves(58)=0.8, Pins(8)=800.0, Dist=194.0
+[2026-05-22 09:03:00] MOVE 118: Simen (purple) 76->66 [0.00ms]
+[2026-05-22 09:03:00] SCORE Harald (yellow): Final=1070.4, Time=75.7, Moves(59)=0.7, Pins(8)=800.0, Dist=194.0
+[2026-05-22 09:03:00] SCORE Simen (purple): Final=1077.3, Time=81.6, Moves(59)=0.7, Pins(8)=800.0, Dist=195.0
+[2026-05-22 09:03:01] MOVE 119: Harald (yellow) 18->31 [0.00ms]
+[2026-05-22 09:03:01] SCORE Harald (yellow): Final=1070.9, Time=75.2, Moves(60)=0.7, Pins(8)=800.0, Dist=195.0
+[2026-05-22 09:03:01] SCORE Simen (purple): Final=1077.3, Time=81.6, Moves(59)=0.7, Pins(8)=800.0, Dist=195.0
+[2026-05-22 09:03:01] MOVE 120: Simen (purple) 77->35 [0.00ms]
+[2026-05-22 09:03:01] SCORE Harald (yellow): Final=1070.9, Time=75.2, Moves(60)=0.7, Pins(8)=800.0, Dist=195.0
+[2026-05-22 09:03:01] SCORE Simen (purple): Final=1180.2, Time=81.5, Moves(60)=0.7, Pins(9)=900.0, Dist=198.0
+[2026-05-22 09:03:01] MOVE 121: Harald (yellow) 31->43 [0.00ms]
+[2026-05-22 09:03:01] SCORE Harald (yellow): Final=1071.3, Time=74.6, Moves(61)=0.7, Pins(8)=800.0, Dist=196.0
+[2026-05-22 09:03:01] SCORE Simen (purple): Final=1180.2, Time=81.5, Moves(60)=0.7, Pins(9)=900.0, Dist=198.0
+[2026-05-22 09:03:02] MOVE 122: Simen (purple) 66->56 [0.00ms]
+[2026-05-22 09:03:02] SCORE Harald (yellow): Final=1071.3, Time=74.6, Moves(61)=0.7, Pins(8)=800.0, Dist=196.0
+[2026-05-22 09:03:02] SCORE Simen (purple): Final=1180.7, Time=81.0, Moves(61)=0.7, Pins(9)=900.0, Dist=199.0
+[2026-05-22 09:03:03] MOVE 123: Harald (yellow) 43->54 [0.00ms]
+[2026-05-22 09:03:03] SCORE Harald (yellow): Final=1071.7, Time=74.1, Moves(62)=0.6, Pins(8)=800.0, Dist=197.0
+[2026-05-22 09:03:03] SCORE Simen (purple): Final=1180.7, Time=81.0, Moves(61)=0.7, Pins(9)=900.0, Dist=199.0
+[2026-05-22 09:03:03] MOVE 124: Simen (purple) 56->47 [0.00ms]
+[2026-05-22 09:03:03] SCORE Harald (yellow): Final=1071.7, Time=74.1, Moves(62)=0.6, Pins(8)=800.0, Dist=197.0
+[2026-05-22 09:03:03] SCORE Simen (purple): Final=1180.0, Time=80.4, Moves(62)=0.6, Pins(9)=900.0, Dist=199.0
+[2026-05-22 09:03:04] MOVE 125: Harald (yellow) 54->63 [0.00ms]
+[2026-05-22 09:03:04] SCORE Harald (yellow): Final=1071.2, Time=73.6, Moves(63)=0.6, Pins(8)=800.0, Dist=197.0
+[2026-05-22 09:03:04] SCORE Simen (purple): Final=1180.0, Time=80.4, Moves(62)=0.6, Pins(9)=900.0, Dist=199.0
+[2026-05-22 09:03:04] MOVE 126: Simen (purple) 47->36 [0.00ms]
+[2026-05-22 09:03:04] SCORE Harald (yellow): Final=1071.2, Time=73.6, Moves(63)=0.6, Pins(8)=800.0, Dist=197.0
+[2026-05-22 09:03:04] SCORE Simen (purple): Final=1281.0, Time=80.4, Moves(63)=0.6, Pins(10)=1000.0, Dist=200.0

@@ -109,7 +109,7 @@ BOOTSTRAP_CHECKPOINT_DIR = os.path.join(BASE_CHECKPOINT_DIR, "bootstrap")
 SELFPLAY_CHECKPOINT_DIR = os.path.join(BASE_CHECKPOINT_DIR, "self_play")
 
 TRAIN_PLAYER_COUNTS = [2, 3, 4, 5, 6]
-TRAIN_PLAYER_COUNT_WEIGHTS = [0.40, 0.15, 0.15, 0.15, 0.15]
+TRAIN_PLAYER_COUNT_WEIGHTS = [0.10, 0.10, 0.15, 0.25, 0.40]
 
 # ============================================================
 # OPPONENT POOL CONFIG

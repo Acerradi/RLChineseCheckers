@@ -1,0 +1,384 @@
+[2026-05-22 09:07:55] GAME CREATED
+[2026-05-22 09:08:07] PLAYER JOINED: Harald as yellow
+[2026-05-22 09:08:10] PLAYER JOINED: Filip as purple
+[2026-05-22 09:08:10] PLAYER START: Filip (purple)
+[2026-05-22 09:08:10] PLAYER START: Harald (yellow)
+[2026-05-22 09:08:10] GAME START — turn order ['yellow', 'purple']
+[2026-05-22 09:08:11] MOVE 1: Harald (yellow) 24->26 [0.00ms]
+[2026-05-22 09:08:11] SCORE Harald (yellow): Final=191.5, Time=99.5, Moves(1)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-22 09:08:11] SCORE Filip (purple): Final=0.0, Time=0.0, Moves(0)=0.0, Pins(0)=0.0, Dist=0.0
+[2026-05-22 09:08:11] MOVE 2: Filip (purple) 85->64 [0.00ms]
+[2026-05-22 09:08:11] SCORE Harald (yellow): Final=191.5, Time=99.5, Moves(1)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-22 09:08:11] SCORE Filip (purple): Final=191.5, Time=99.5, Moves(1)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-22 09:08:11] MOVE 3: Harald (yellow) 35->14 [0.01ms]
+[2026-05-22 09:08:11] SCORE Harald (yellow): Final=193.4, Time=99.4, Moves(2)=0.0, Pins(0)=0.0, Dist=94.0
+[2026-05-22 09:08:11] SCORE Filip (purple): Final=191.5, Time=99.5, Moves(1)=0.0, Pins(0)=0.0, Dist=92.0
+[2026-05-22 09:08:12] MOVE 4: Filip (purple) 110->83 [0.01ms]
+[2026-05-22 09:08:12] SCORE Harald (yellow): Final=193.4, Time=99.4, Moves(2)=0.0, Pins(0)=0.0, Dist=94.0
+[2026-05-22 09:08:12] SCORE Filip (purple): Final=195.1, Time=99.1, Moves(2)=0.0, Pins(0)=0.0, Dist=96.0
+[2026-05-22 09:08:12] MOVE 5: Harald (yellow) 10->56 [0.01ms]
+[2026-05-22 09:08:12] SCORE Harald (yellow): Final=197.3, Time=99.3, Moves(3)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-22 09:08:12] SCORE Filip (purple): Final=195.1, Time=99.1, Moves(2)=0.0, Pins(0)=0.0, Dist=96.0
+[2026-05-22 09:08:12] MOVE 6: Filip (purple) 96->55 [0.00ms]
+[2026-05-22 09:08:12] SCORE Harald (yellow): Final=197.3, Time=99.3, Moves(3)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-22 09:08:12] SCORE Filip (purple): Final=196.6, Time=98.6, Moves(3)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-22 09:08:12] MOVE 7: Harald (yellow) 12->37 [0.00ms]
+[2026-05-22 09:08:12] SCORE Harald (yellow): Final=199.2, Time=99.2, Moves(4)=0.0, Pins(0)=0.0, Dist=100.0
+[2026-05-22 09:08:12] SCORE Filip (purple): Final=196.6, Time=98.6, Moves(3)=0.0, Pins(0)=0.0, Dist=98.0
+[2026-05-22 09:08:13] MOVE 8: Filip (purple) 84->82 [0.00ms]
+[2026-05-22 09:08:13] SCORE Harald (yellow): Final=199.2, Time=99.2, Moves(4)=0.0, Pins(0)=0.0, Dist=100.0
+[2026-05-22 09:08:13] SCORE Filip (purple): Final=198.1, Time=98.1, Moves(4)=0.0, Pins(0)=0.0, Dist=100.0
+[2026-05-22 09:08:13] MOVE 9: Harald (yellow) 25->27 [0.00ms]
+[2026-05-22 09:08:13] SCORE Harald (yellow): Final=201.1, Time=99.1, Moves(5)=0.0, Pins(0)=0.0, Dist=102.0
+[2026-05-22 09:08:13] SCORE Filip (purple): Final=198.1, Time=98.1, Moves(4)=0.0, Pins(0)=0.0, Dist=100.0
+[2026-05-22 09:08:13] MOVE 10: Filip (purple) 95->72 [0.00ms]
+[2026-05-22 09:08:13] SCORE Harald (yellow): Final=201.1, Time=99.1, Moves(5)=0.0, Pins(0)=0.0, Dist=102.0
+[2026-05-22 09:08:13] SCORE Filip (purple): Final=199.7, Time=97.7, Moves(5)=0.0, Pins(0)=0.0, Dist=102.0
+[2026-05-22 09:08:14] MOVE 11: Harald (yellow) 36->15 [0.00ms]
+[2026-05-22 09:08:14] SCORE Harald (yellow): Final=202.9, Time=98.9, Moves(6)=0.0, Pins(0)=0.0, Dist=104.0
+[2026-05-22 09:08:14] SCORE Filip (purple): Final=199.7, Time=97.7, Moves(5)=0.0, Pins(0)=0.0, Dist=102.0
+[2026-05-22 09:08:14] MOVE 12: Filip (purple) 108->106 [0.00ms]
+[2026-05-22 09:08:14] SCORE Harald (yellow): Final=202.9, Time=98.9, Moves(6)=0.0, Pins(0)=0.0, Dist=104.0
+[2026-05-22 09:08:14] SCORE Filip (purple): Final=201.3, Time=97.3, Moves(6)=0.0, Pins(0)=0.0, Dist=104.0
+[2026-05-22 09:08:14] MOVE 13: Harald (yellow) 13->38 [0.00ms]
+[2026-05-22 09:08:14] SCORE Harald (yellow): Final=204.8, Time=98.8, Moves(7)=0.0, Pins(0)=0.0, Dist=106.0
+[2026-05-22 09:08:14] SCORE Filip (purple): Final=201.3, Time=97.3, Moves(6)=0.0, Pins(0)=0.0, Dist=104.0
+[2026-05-22 09:08:15] MOVE 14: Filip (purple) 74->54 [0.00ms]
+[2026-05-22 09:08:15] SCORE Harald (yellow): Final=204.8, Time=98.8, Moves(7)=0.0, Pins(0)=0.0, Dist=106.0
+[2026-05-22 09:08:15] SCORE Filip (purple): Final=202.8, Time=96.8, Moves(7)=0.0, Pins(0)=0.0, Dist=106.0
+[2026-05-22 09:08:15] MOVE 15: Harald (yellow) 46->66 [0.00ms]
+[2026-05-22 09:08:15] SCORE Harald (yellow): Final=206.7, Time=98.7, Moves(8)=0.0, Pins(0)=0.0, Dist=108.0
+[2026-05-22 09:08:15] SCORE Filip (purple): Final=202.8, Time=96.8, Moves(7)=0.0, Pins(0)=0.0, Dist=106.0
+[2026-05-22 09:08:15] MOVE 16: Filip (purple) 107->105 [0.01ms]
+[2026-05-22 09:08:15] SCORE Harald (yellow): Final=206.7, Time=98.7, Moves(8)=0.0, Pins(0)=0.0, Dist=108.0
+[2026-05-22 09:08:15] SCORE Filip (purple): Final=204.4, Time=96.4, Moves(8)=0.0, Pins(0)=0.0, Dist=108.0
+[2026-05-22 09:08:15] MOVE 17: Harald (yellow) 26->67 [0.00ms]
+[2026-05-22 09:08:15] SCORE Harald (yellow): Final=208.6, Time=98.6, Moves(9)=0.0, Pins(0)=0.0, Dist=110.0
+[2026-05-22 09:08:15] SCORE Filip (purple): Final=204.4, Time=96.4, Moves(8)=0.0, Pins(0)=0.0, Dist=108.0
+[2026-05-22 09:08:16] MOVE 18: Filip (purple) 55->92 [0.00ms]
+[2026-05-22 09:08:16] SCORE Harald (yellow): Final=208.6, Time=98.6, Moves(9)=0.0, Pins(0)=0.0, Dist=110.0
+[2026-05-22 09:08:16] SCORE Filip (purple): Final=205.9, Time=95.9, Moves(9)=0.0, Pins(0)=0.0, Dist=110.0
+[2026-05-22 09:08:16] MOVE 19: Harald (yellow) 37->39 [0.00ms]
+[2026-05-22 09:08:16] SCORE Harald (yellow): Final=210.4, Time=98.4, Moves(10)=0.0, Pins(0)=0.0, Dist=112.0
+[2026-05-22 09:08:16] SCORE Filip (purple): Final=205.9, Time=95.9, Moves(9)=0.0, Pins(0)=0.0, Dist=110.0
+[2026-05-22 09:08:16] MOVE 20: Filip (purple) 72->91 [0.00ms]
+[2026-05-22 09:08:16] SCORE Harald (yellow): Final=210.4, Time=98.4, Moves(10)=0.0, Pins(0)=0.0, Dist=112.0
+[2026-05-22 09:08:16] SCORE Filip (purple): Final=207.5, Time=95.5, Moves(10)=0.0, Pins(0)=0.0, Dist=112.0
+[2026-05-22 09:08:16] MOVE 21: Harald (yellow) 27->50 [0.01ms]
+[2026-05-22 09:08:16] SCORE Harald (yellow): Final=212.4, Time=98.4, Moves(11)=0.0, Pins(0)=0.0, Dist=114.0
+[2026-05-22 09:08:16] SCORE Filip (purple): Final=207.5, Time=95.5, Moves(10)=0.0, Pins(0)=0.0, Dist=112.0
+[2026-05-22 09:08:17] MOVE 22: Filip (purple) 106->79 [0.00ms]
+[2026-05-22 09:08:17] SCORE Harald (yellow): Final=212.4, Time=98.4, Moves(11)=0.0, Pins(0)=0.0, Dist=114.0
+[2026-05-22 09:08:17] SCORE Filip (purple): Final=211.0, Time=95.0, Moves(11)=0.0, Pins(0)=0.0, Dist=116.0
+[2026-05-22 09:08:17] MOVE 23: Harald (yellow) 14->16 [0.01ms]
+[2026-05-22 09:08:17] SCORE Harald (yellow): Final=214.3, Time=98.3, Moves(12)=0.0, Pins(0)=0.0, Dist=116.0
+[2026-05-22 09:08:17] SCORE Filip (purple): Final=211.0, Time=95.0, Moves(11)=0.0, Pins(0)=0.0, Dist=116.0
+[2026-05-22 09:08:17] MOVE 24: Filip (purple) 105->57 [0.01ms]
+[2026-05-22 09:08:17] SCORE Harald (yellow): Final=214.3, Time=98.3, Moves(12)=0.0, Pins(0)=0.0, Dist=116.0
+[2026-05-22 09:08:17] SCORE Filip (purple): Final=216.5, Time=94.5, Moves(12)=0.0, Pins(0)=0.0, Dist=122.0
+[2026-05-22 09:08:18] MOVE 25: Harald (yellow) 66->29 [0.01ms]
+[2026-05-22 09:08:18] SCORE Harald (yellow): Final=216.2, Time=98.2, Moves(13)=0.0, Pins(0)=0.0, Dist=118.0
+[2026-05-22 09:08:18] SCORE Filip (purple): Final=216.5, Time=94.5, Moves(12)=0.0, Pins(0)=0.0, Dist=122.0
+[2026-05-22 09:08:18] MOVE 26: Filip (purple) 91->46 [0.01ms]
+[2026-05-22 09:08:18] SCORE Harald (yellow): Final=216.2, Time=98.2, Moves(13)=0.0, Pins(0)=0.0, Dist=118.0
+[2026-05-22 09:08:18] SCORE Filip (purple): Final=322.0, Time=94.0, Moves(13)=0.0, Pins(1)=100.0, Dist=128.0
+[2026-05-22 09:08:18] MOVE 27: Harald (yellow) 29->95 [0.01ms]
+[2026-05-22 09:08:18] SCORE Harald (yellow): Final=322.1, Time=98.1, Moves(14)=0.0, Pins(1)=100.0, Dist=124.0
+[2026-05-22 09:08:18] SCORE Filip (purple): Final=322.0, Time=94.0, Moves(13)=0.0, Pins(1)=100.0, Dist=128.0
+[2026-05-22 09:08:19] MOVE 28: Filip (purple) 83->104 [0.00ms]
+[2026-05-22 09:08:19] SCORE Harald (yellow): Final=322.1, Time=98.1, Moves(14)=0.0, Pins(1)=100.0, Dist=124.0
+[2026-05-22 09:08:19] SCORE Filip (purple): Final=323.5, Time=93.5, Moves(14)=0.0, Pins(1)=100.0, Dist=130.0
+[2026-05-22 09:08:19] MOVE 29: Harald (yellow) 50->72 [0.00ms]
+[2026-05-22 09:08:19] SCORE Harald (yellow): Final=326.0, Time=98.0, Moves(15)=0.0, Pins(1)=100.0, Dist=128.0
+[2026-05-22 09:08:19] SCORE Filip (purple): Final=323.5, Time=93.5, Moves(14)=0.0, Pins(1)=100.0, Dist=130.0
+[2026-05-22 09:08:19] MOVE 30: Filip (purple) 64->43 [0.01ms]
+[2026-05-22 09:08:19] SCORE Harald (yellow): Final=326.0, Time=98.0, Moves(15)=0.0, Pins(1)=100.0, Dist=128.0
+[2026-05-22 09:08:19] SCORE Filip (purple): Final=325.0, Time=93.0, Moves(15)=0.0, Pins(1)=100.0, Dist=132.0
+[2026-05-22 09:08:19] MOVE 31: Harald (yellow) 56->58 [0.01ms]
+[2026-05-22 09:08:19] SCORE Harald (yellow): Final=328.0, Time=98.0, Moves(16)=0.0, Pins(1)=100.0, Dist=130.0
+[2026-05-22 09:08:19] SCORE Filip (purple): Final=325.0, Time=93.0, Moves(15)=0.0, Pins(1)=100.0, Dist=132.0
+[2026-05-22 09:08:20] MOVE 32: Filip (purple) 82->42 [0.01ms]
+[2026-05-22 09:08:20] SCORE Harald (yellow): Final=328.0, Time=98.0, Moves(16)=0.0, Pins(1)=100.0, Dist=130.0
+[2026-05-22 09:08:20] SCORE Filip (purple): Final=326.5, Time=92.5, Moves(16)=0.0, Pins(1)=100.0, Dist=134.0
+[2026-05-22 09:08:20] MOVE 33: Harald (yellow) 38->40 [0.01ms]
+[2026-05-22 09:08:20] SCORE Harald (yellow): Final=329.4, Time=97.4, Moves(17)=0.0, Pins(1)=100.0, Dist=132.0
+[2026-05-22 09:08:20] SCORE Filip (purple): Final=326.5, Time=92.5, Moves(16)=0.0, Pins(1)=100.0, Dist=134.0
+[2026-05-22 09:08:21] MOVE 34: Filip (purple) 43->41 [0.01ms]
+[2026-05-22 09:08:21] SCORE Harald (yellow): Final=329.4, Time=97.4, Moves(17)=0.0, Pins(1)=100.0, Dist=132.0
+[2026-05-22 09:08:21] SCORE Filip (purple): Final=327.9, Time=91.9, Moves(17)=0.0, Pins(1)=100.0, Dist=136.0
+[2026-05-22 09:08:21] MOVE 35: Harald (yellow) 67->55 [0.01ms]
+[2026-05-22 09:08:21] SCORE Harald (yellow): Final=334.3, Time=97.3, Moves(18)=0.0, Pins(1)=100.0, Dist=137.0
+[2026-05-22 09:08:21] SCORE Filip (purple): Final=327.9, Time=91.9, Moves(17)=0.0, Pins(1)=100.0, Dist=136.0
+[2026-05-22 09:08:21] MOVE 36: Filip (purple) 109->108 [0.01ms]
+[2026-05-22 09:08:21] SCORE Harald (yellow): Final=334.3, Time=97.3, Moves(18)=0.0, Pins(1)=100.0, Dist=137.0
+[2026-05-22 09:08:21] SCORE Filip (purple): Final=328.5, Time=91.5, Moves(18)=0.0, Pins(1)=100.0, Dist=137.0
+[2026-05-22 09:08:22] MOVE 37: Harald (yellow) 15->17 [0.00ms]
+[2026-05-22 09:08:22] SCORE Harald (yellow): Final=336.2, Time=97.2, Moves(19)=0.0, Pins(1)=100.0, Dist=139.0
+[2026-05-22 09:08:22] SCORE Filip (purple): Final=328.5, Time=91.5, Moves(18)=0.0, Pins(1)=100.0, Dist=137.0
+[2026-05-22 09:08:22] MOVE 38: Filip (purple) 108->62 [0.00ms]
+[2026-05-22 09:08:22] SCORE Harald (yellow): Final=336.2, Time=97.2, Moves(19)=0.0, Pins(1)=100.0, Dist=139.0
+[2026-05-22 09:08:22] SCORE Filip (purple): Final=332.0, Time=91.0, Moves(19)=0.0, Pins(1)=100.0, Dist=141.0
+[2026-05-22 09:08:22] MOVE 39: Harald (yellow) 16->18 [0.00ms]
+[2026-05-22 09:08:22] SCORE Harald (yellow): Final=338.1, Time=97.1, Moves(20)=0.0, Pins(1)=100.0, Dist=141.0
+[2026-05-22 09:08:22] SCORE Filip (purple): Final=332.0, Time=91.0, Moves(19)=0.0, Pins(1)=100.0, Dist=141.0
+[2026-05-22 09:08:23] MOVE 40: Filip (purple) 97->85 [0.00ms]
+[2026-05-22 09:08:23] SCORE Harald (yellow): Final=338.1, Time=97.1, Moves(20)=0.0, Pins(1)=100.0, Dist=141.0
+[2026-05-22 09:08:23] SCORE Filip (purple): Final=332.5, Time=90.5, Moves(20)=0.0, Pins(1)=100.0, Dist=142.0
+[2026-05-22 09:08:23] MOVE 41: Harald (yellow) 11->12 [0.00ms]
+[2026-05-22 09:08:23] SCORE Harald (yellow): Final=339.0, Time=97.0, Moves(21)=0.0, Pins(1)=100.0, Dist=142.0
+[2026-05-22 09:08:23] SCORE Filip (purple): Final=332.5, Time=90.5, Moves(20)=0.0, Pins(1)=100.0, Dist=142.0
+[2026-05-22 09:08:23] MOVE 42: Filip (purple) 85->74 [0.00ms]
+[2026-05-22 09:08:23] SCORE Harald (yellow): Final=339.0, Time=97.0, Moves(21)=0.0, Pins(1)=100.0, Dist=142.0
+[2026-05-22 09:08:23] SCORE Filip (purple): Final=333.1, Time=90.1, Moves(21)=0.0, Pins(1)=100.0, Dist=143.0
+[2026-05-22 09:08:23] MOVE 43: Harald (yellow) 12->13 [0.00ms]
+[2026-05-22 09:08:23] SCORE Harald (yellow): Final=339.9, Time=96.9, Moves(22)=0.0, Pins(1)=100.0, Dist=143.0
+[2026-05-22 09:08:23] SCORE Filip (purple): Final=333.1, Time=90.1, Moves(21)=0.0, Pins(1)=100.0, Dist=143.0
+[2026-05-22 09:08:24] MOVE 44: Filip (purple) 74->64 [0.01ms]
+[2026-05-22 09:08:24] SCORE Harald (yellow): Final=339.9, Time=96.9, Moves(22)=0.0, Pins(1)=100.0, Dist=143.0
+[2026-05-22 09:08:24] SCORE Filip (purple): Final=333.6, Time=89.6, Moves(22)=0.0, Pins(1)=100.0, Dist=144.0
+[2026-05-22 09:08:24] MOVE 45: Harald (yellow) 13->14 [0.01ms]
+[2026-05-22 09:08:24] SCORE Harald (yellow): Final=340.9, Time=96.9, Moves(23)=0.0, Pins(1)=100.0, Dist=144.0
+[2026-05-22 09:08:24] SCORE Filip (purple): Final=333.6, Time=89.6, Moves(22)=0.0, Pins(1)=100.0, Dist=144.0
+[2026-05-22 09:08:24] MOVE 46: Filip (purple) 64->43 [0.01ms]
+[2026-05-22 09:08:24] SCORE Harald (yellow): Final=340.9, Time=96.9, Moves(23)=0.0, Pins(1)=100.0, Dist=144.0
+[2026-05-22 09:08:24] SCORE Filip (purple): Final=335.1, Time=89.1, Moves(23)=0.0, Pins(1)=100.0, Dist=146.0
+[2026-05-22 09:08:24] MOVE 47: Harald (yellow) 23->35 [0.01ms]
+[2026-05-22 09:08:24] SCORE Harald (yellow): Final=341.8, Time=96.8, Moves(24)=0.0, Pins(1)=100.0, Dist=145.0
+[2026-05-22 09:08:24] SCORE Filip (purple): Final=335.1, Time=89.1, Moves(23)=0.0, Pins(1)=100.0, Dist=146.0
+[2026-05-22 09:08:25] MOVE 48: Filip (purple) 54->27 [0.01ms]
+[2026-05-22 09:08:25] SCORE Harald (yellow): Final=341.8, Time=96.8, Moves(24)=0.0, Pins(1)=100.0, Dist=145.0
+[2026-05-22 09:08:25] SCORE Filip (purple): Final=340.6, Time=88.6, Moves(24)=0.0, Pins(1)=100.0, Dist=152.0
+[2026-05-22 09:08:25] MOVE 49: Harald (yellow) 35->56 [0.00ms]
+[2026-05-22 09:08:25] SCORE Harald (yellow): Final=343.6, Time=96.6, Moves(25)=0.0, Pins(1)=100.0, Dist=147.0
+[2026-05-22 09:08:25] SCORE Filip (purple): Final=340.6, Time=88.6, Moves(24)=0.0, Pins(1)=100.0, Dist=152.0
+[2026-05-22 09:08:25] MOVE 50: Filip (purple) 27->26 [0.00ms]
+[2026-05-22 09:08:25] SCORE Harald (yellow): Final=343.6, Time=96.6, Moves(25)=0.0, Pins(1)=100.0, Dist=147.0
+[2026-05-22 09:08:25] SCORE Filip (purple): Final=341.1, Time=88.1, Moves(25)=0.0, Pins(1)=100.0, Dist=153.0
+[2026-05-22 09:08:26] MOVE 51: Harald (yellow) 17->19 [0.01ms]
+[2026-05-22 09:08:26] SCORE Harald (yellow): Final=344.5, Time=96.5, Moves(26)=0.0, Pins(1)=100.0, Dist=148.0
+[2026-05-22 09:08:26] SCORE Filip (purple): Final=341.1, Time=88.1, Moves(25)=0.0, Pins(1)=100.0, Dist=153.0
+[2026-05-22 09:08:26] MOVE 52: Filip (purple) 26->25 [0.01ms]
+[2026-05-22 09:08:26] SCORE Harald (yellow): Final=344.5, Time=96.5, Moves(26)=0.0, Pins(1)=100.0, Dist=148.0
+[2026-05-22 09:08:26] SCORE Filip (purple): Final=441.7, Time=87.7, Moves(26)=0.0, Pins(2)=200.0, Dist=154.0
+[2026-05-22 09:08:26] MOVE 53: Harald (yellow) 14->15 [0.01ms]
+[2026-05-22 09:08:26] SCORE Harald (yellow): Final=345.4, Time=96.4, Moves(27)=0.0, Pins(1)=100.0, Dist=149.0
+[2026-05-22 09:08:26] SCORE Filip (purple): Final=441.7, Time=87.7, Moves(26)=0.0, Pins(2)=200.0, Dist=154.0
+[2026-05-22 09:08:27] MOVE 54: Filip (purple) 57->47 [0.01ms]
+[2026-05-22 09:08:27] SCORE Harald (yellow): Final=345.4, Time=96.4, Moves(27)=0.0, Pins(1)=100.0, Dist=149.0
+[2026-05-22 09:08:27] SCORE Filip (purple): Final=442.3, Time=87.3, Moves(27)=0.0, Pins(2)=200.0, Dist=155.0
+[2026-05-22 09:08:27] MOVE 55: Harald (yellow) 72->73 [0.00ms]
+[2026-05-22 09:08:27] SCORE Harald (yellow): Final=346.3, Time=96.3, Moves(28)=0.0, Pins(1)=100.0, Dist=150.0
+[2026-05-22 09:08:27] SCORE Filip (purple): Final=442.3, Time=87.3, Moves(27)=0.0, Pins(2)=200.0, Dist=155.0
+[2026-05-22 09:08:27] MOVE 56: Filip (purple) 47->36 [0.00ms]
+[2026-05-22 09:08:27] SCORE Harald (yellow): Final=346.3, Time=96.3, Moves(28)=0.0, Pins(1)=100.0, Dist=150.0
+[2026-05-22 09:08:27] SCORE Filip (purple): Final=542.8, Time=86.8, Moves(28)=0.0, Pins(3)=300.0, Dist=156.0
+[2026-05-22 09:08:27] MOVE 57: Harald (yellow) 73->84 [0.00ms]
+[2026-05-22 09:08:27] SCORE Harald (yellow): Final=447.1, Time=96.1, Moves(29)=0.0, Pins(2)=200.0, Dist=151.0
+[2026-05-22 09:08:27] SCORE Filip (purple): Final=542.8, Time=86.8, Moves(28)=0.0, Pins(3)=300.0, Dist=156.0
+[2026-05-22 09:08:28] MOVE 58: Filip (purple) 104->91 [0.00ms]
+[2026-05-22 09:08:28] SCORE Harald (yellow): Final=447.1, Time=96.1, Moves(29)=0.0, Pins(2)=200.0, Dist=151.0
+[2026-05-22 09:08:28] SCORE Filip (purple): Final=543.4, Time=86.4, Moves(29)=0.0, Pins(3)=300.0, Dist=157.0
+[2026-05-22 09:08:28] MOVE 59: Harald (yellow) 55->64 [0.01ms]
+[2026-05-22 09:08:28] SCORE Harald (yellow): Final=448.0, Time=96.0, Moves(30)=0.0, Pins(2)=200.0, Dist=152.0
+[2026-05-22 09:08:28] SCORE Filip (purple): Final=543.4, Time=86.4, Moves(29)=0.0, Pins(3)=300.0, Dist=157.0
+[2026-05-22 09:08:28] MOVE 60: Filip (purple) 91->48 [0.00ms]
+[2026-05-22 09:08:28] SCORE Harald (yellow): Final=448.0, Time=96.0, Moves(30)=0.0, Pins(2)=200.0, Dist=152.0
+[2026-05-22 09:08:28] SCORE Filip (purple): Final=546.9, Time=85.9, Moves(30)=0.0, Pins(3)=300.0, Dist=161.0
+[2026-05-22 09:08:28] MOVE 61: Harald (yellow) 64->74 [0.01ms]
+[2026-05-22 09:08:28] SCORE Harald (yellow): Final=548.9, Time=95.9, Moves(31)=0.0, Pins(3)=300.0, Dist=153.0
+[2026-05-22 09:08:28] SCORE Filip (purple): Final=546.9, Time=85.9, Moves(30)=0.0, Pins(3)=300.0, Dist=161.0
+[2026-05-22 09:08:29] MOVE 62: Filip (purple) 42->30 [0.01ms]
+[2026-05-22 09:08:29] SCORE Harald (yellow): Final=548.9, Time=95.9, Moves(31)=0.0, Pins(3)=300.0, Dist=153.0
+[2026-05-22 09:08:29] SCORE Filip (purple): Final=547.5, Time=85.5, Moves(31)=0.0, Pins(3)=300.0, Dist=162.0
+[2026-05-22 09:08:29] MOVE 63: Harald (yellow) 40->44 [0.02ms]
+[2026-05-22 09:08:29] SCORE Harald (yellow): Final=551.8, Time=95.8, Moves(32)=0.0, Pins(3)=300.0, Dist=156.0
+[2026-05-22 09:08:29] SCORE Filip (purple): Final=547.5, Time=85.5, Moves(31)=0.0, Pins(3)=300.0, Dist=162.0
+[2026-05-22 09:08:29] MOVE 64: Filip (purple) 30->29 [0.01ms]
+[2026-05-22 09:08:29] SCORE Harald (yellow): Final=551.8, Time=95.8, Moves(32)=0.0, Pins(3)=300.0, Dist=156.0
+[2026-05-22 09:08:29] SCORE Filip (purple): Final=548.0, Time=85.0, Moves(32)=0.0, Pins(3)=300.0, Dist=163.0
+[2026-05-22 09:08:30] MOVE 65: Harald (yellow) 19->42 [0.00ms]
+[2026-05-22 09:08:30] SCORE Harald (yellow): Final=552.7, Time=95.7, Moves(33)=0.0, Pins(3)=300.0, Dist=157.0
+[2026-05-22 09:08:30] SCORE Filip (purple): Final=548.0, Time=85.0, Moves(32)=0.0, Pins(3)=300.0, Dist=163.0
+[2026-05-22 09:08:30] MOVE 66: Filip (purple) 41->14 [0.01ms]
+[2026-05-22 09:08:30] SCORE Harald (yellow): Final=552.7, Time=95.7, Moves(33)=0.0, Pins(3)=300.0, Dist=157.0
+[2026-05-22 09:08:30] SCORE Filip (purple): Final=551.5, Time=84.5, Moves(33)=0.0, Pins(3)=300.0, Dist=167.0
+[2026-05-22 09:08:30] MOVE 67: Harald (yellow) 42->53 [0.01ms]
+[2026-05-22 09:08:30] SCORE Harald (yellow): Final=553.6, Time=95.6, Moves(34)=0.0, Pins(3)=300.0, Dist=158.0
+[2026-05-22 09:08:30] SCORE Filip (purple): Final=551.5, Time=84.5, Moves(33)=0.0, Pins(3)=300.0, Dist=167.0
+[2026-05-22 09:08:31] MOVE 68: Filip (purple) 14->13 [0.01ms]
+[2026-05-22 09:08:31] SCORE Harald (yellow): Final=553.6, Time=95.6, Moves(34)=0.0, Pins(3)=300.0, Dist=158.0
+[2026-05-22 09:08:31] SCORE Filip (purple): Final=652.1, Time=84.1, Moves(34)=0.0, Pins(4)=400.0, Dist=168.0
+[2026-05-22 09:08:31] MOVE 69: Harald (yellow) 56->41 [0.01ms]
+[2026-05-22 09:08:31] SCORE Harald (yellow): Final=557.6, Time=95.5, Moves(35)=0.0, Pins(3)=300.0, Dist=162.0
+[2026-05-22 09:08:31] SCORE Filip (purple): Final=652.1, Time=84.1, Moves(34)=0.0, Pins(4)=400.0, Dist=168.0
+[2026-05-22 09:08:31] MOVE 70: Filip (purple) 29->28 [0.01ms]
+[2026-05-22 09:08:31] SCORE Harald (yellow): Final=557.6, Time=95.5, Moves(35)=0.0, Pins(3)=300.0, Dist=162.0
+[2026-05-22 09:08:31] SCORE Filip (purple): Final=652.6, Time=83.6, Moves(35)=0.0, Pins(4)=400.0, Dist=169.0
+[2026-05-22 09:08:31] MOVE 71: Harald (yellow) 15->63 [0.01ms]
+[2026-05-22 09:08:31] SCORE Harald (yellow): Final=563.5, Time=95.4, Moves(36)=0.1, Pins(3)=300.0, Dist=168.0
+[2026-05-22 09:08:31] SCORE Filip (purple): Final=652.6, Time=83.6, Moves(35)=0.0, Pins(4)=400.0, Dist=169.0
+[2026-05-22 09:08:32] MOVE 72: Filip (purple) 28->24 [0.01ms]
+[2026-05-22 09:08:32] SCORE Harald (yellow): Final=563.5, Time=95.4, Moves(36)=0.1, Pins(3)=300.0, Dist=168.0
+[2026-05-22 09:08:32] SCORE Filip (purple): Final=755.1, Time=83.0, Moves(36)=0.1, Pins(5)=500.0, Dist=172.0
+[2026-05-22 09:08:32] MOVE 73: Harald (yellow) 53->96 [0.01ms]
+[2026-05-22 09:08:32] SCORE Harald (yellow): Final=666.5, Time=95.4, Moves(37)=0.1, Pins(4)=400.0, Dist=171.0
+[2026-05-22 09:08:32] SCORE Filip (purple): Final=755.1, Time=83.0, Moves(36)=0.1, Pins(5)=500.0, Dist=172.0
+[2026-05-22 09:08:32] MOVE 74: Filip (purple) 25->23 [0.00ms]
+[2026-05-22 09:08:32] SCORE Harald (yellow): Final=666.5, Time=95.4, Moves(37)=0.1, Pins(4)=400.0, Dist=171.0
+[2026-05-22 09:08:32] SCORE Filip (purple): Final=754.7, Time=82.5, Moves(37)=0.1, Pins(5)=500.0, Dist=172.0
+[2026-05-22 09:08:32] MOVE 75: Harald (yellow) 84->109 [0.00ms]
+[2026-05-22 09:08:32] SCORE Harald (yellow): Final=666.5, Time=95.3, Moves(38)=0.2, Pins(4)=400.0, Dist=171.0
+[2026-05-22 09:08:32] SCORE Filip (purple): Final=754.7, Time=82.5, Moves(37)=0.1, Pins(5)=500.0, Dist=172.0
+[2026-05-22 09:08:33] MOVE 76: Filip (purple) 36->11 [0.01ms]
+[2026-05-22 09:08:33] SCORE Harald (yellow): Final=666.5, Time=95.3, Moves(38)=0.2, Pins(4)=400.0, Dist=171.0
+[2026-05-22 09:08:33] SCORE Filip (purple): Final=754.2, Time=82.0, Moves(38)=0.2, Pins(5)=500.0, Dist=172.0
+[2026-05-22 09:08:34] MOVE 77: Harald (yellow) 95->97 [0.01ms]
+[2026-05-22 09:08:34] SCORE Harald (yellow): Final=666.0, Time=94.7, Moves(39)=0.3, Pins(4)=400.0, Dist=171.0
+[2026-05-22 09:08:34] SCORE Filip (purple): Final=754.2, Time=82.0, Moves(38)=0.2, Pins(5)=500.0, Dist=172.0
+[2026-05-22 09:08:34] MOVE 78: Filip (purple) 48->37 [0.01ms]
+[2026-05-22 09:08:34] SCORE Harald (yellow): Final=666.0, Time=94.7, Moves(39)=0.3, Pins(4)=400.0, Dist=171.0
+[2026-05-22 09:08:34] SCORE Filip (purple): Final=754.8, Time=81.5, Moves(39)=0.3, Pins(5)=500.0, Dist=173.0
+[2026-05-22 09:08:35] MOVE 79: Harald (yellow) 63->73 [0.01ms]
+[2026-05-22 09:08:35] SCORE Harald (yellow): Final=666.6, Time=94.2, Moves(40)=0.5, Pins(4)=400.0, Dist=172.0
+[2026-05-22 09:08:35] SCORE Filip (purple): Final=754.8, Time=81.5, Moves(39)=0.3, Pins(5)=500.0, Dist=173.0
+[2026-05-22 09:08:35] MOVE 80: Filip (purple) 37->25 [0.01ms]
+[2026-05-22 09:08:35] SCORE Harald (yellow): Final=666.6, Time=94.2, Moves(40)=0.5, Pins(4)=400.0, Dist=172.0
+[2026-05-22 09:08:35] SCORE Filip (purple): Final=855.3, Time=80.9, Moves(40)=0.5, Pins(6)=600.0, Dist=174.0
+[2026-05-22 09:08:36] MOVE 81: Harald (yellow) 73->84 [0.01ms]
+[2026-05-22 09:08:36] SCORE Harald (yellow): Final=767.2, Time=93.6, Moves(41)=0.6, Pins(5)=500.0, Dist=173.0
+[2026-05-22 09:08:36] SCORE Filip (purple): Final=855.3, Time=80.9, Moves(40)=0.5, Pins(6)=600.0, Dist=174.0
+[2026-05-22 09:08:36] MOVE 82: Filip (purple) 43->42 [0.01ms]
+[2026-05-22 09:08:36] SCORE Harald (yellow): Final=767.2, Time=93.6, Moves(41)=0.6, Pins(5)=500.0, Dist=173.0
+[2026-05-22 09:08:36] SCORE Filip (purple): Final=856.0, Time=80.4, Moves(41)=0.6, Pins(6)=600.0, Dist=175.0
+[2026-05-22 09:08:37] MOVE 83: Harald (yellow) 41->45 [0.01ms]
+[2026-05-22 09:08:37] SCORE Harald (yellow): Final=768.7, Time=93.0, Moves(42)=0.8, Pins(5)=500.0, Dist=175.0
+[2026-05-22 09:08:37] SCORE Filip (purple): Final=856.0, Time=80.4, Moves(41)=0.6, Pins(6)=600.0, Dist=175.0
+[2026-05-22 09:08:38] MOVE 84: Filip (purple) 42->41 [0.01ms]
+[2026-05-22 09:08:38] SCORE Harald (yellow): Final=768.7, Time=93.0, Moves(42)=0.8, Pins(5)=500.0, Dist=175.0
+[2026-05-22 09:08:38] SCORE Filip (purple): Final=856.5, Time=79.8, Moves(42)=0.8, Pins(6)=600.0, Dist=176.0
+[2026-05-22 09:08:38] MOVE 85: Harald (yellow) 44->54 [0.01ms]
+[2026-05-22 09:08:38] SCORE Harald (yellow): Final=769.3, Time=92.4, Moves(43)=0.9, Pins(5)=500.0, Dist=176.0
+[2026-05-22 09:08:38] SCORE Filip (purple): Final=856.5, Time=79.8, Moves(42)=0.8, Pins(6)=600.0, Dist=176.0
+[2026-05-22 09:08:39] MOVE 86: Filip (purple) 41->40 [0.00ms]
+[2026-05-22 09:08:39] SCORE Harald (yellow): Final=769.3, Time=92.4, Moves(43)=0.9, Pins(5)=500.0, Dist=176.0
+[2026-05-22 09:08:39] SCORE Filip (purple): Final=857.0, Time=79.2, Moves(43)=0.9, Pins(6)=600.0, Dist=177.0
+[2026-05-22 09:08:39] MOVE 87: Harald (yellow) 39->41 [0.01ms]
+[2026-05-22 09:08:39] SCORE Harald (yellow): Final=770.9, Time=91.9, Moves(44)=1.0, Pins(5)=500.0, Dist=178.0
+[2026-05-22 09:08:39] SCORE Filip (purple): Final=857.0, Time=79.2, Moves(43)=0.9, Pins(6)=600.0, Dist=177.0
+[2026-05-22 09:08:40] MOVE 88: Filip (purple) 40->39 [0.01ms]
+[2026-05-22 09:08:40] SCORE Harald (yellow): Final=770.9, Time=91.9, Moves(44)=1.0, Pins(5)=500.0, Dist=178.0
+[2026-05-22 09:08:40] SCORE Filip (purple): Final=857.5, Time=78.6, Moves(44)=1.0, Pins(6)=600.0, Dist=178.0
+[2026-05-22 09:08:41] MOVE 89: Harald (yellow) 54->64 [0.00ms]
+[2026-05-22 09:08:41] SCORE Harald (yellow): Final=771.2, Time=91.2, Moves(45)=1.0, Pins(5)=500.0, Dist=179.0
+[2026-05-22 09:08:41] SCORE Filip (purple): Final=857.5, Time=78.6, Moves(44)=1.0, Pins(6)=600.0, Dist=178.0
+[2026-05-22 09:08:41] MOVE 90: Filip (purple) 39->38 [0.01ms]
+[2026-05-22 09:08:41] SCORE Harald (yellow): Final=771.2, Time=91.2, Moves(45)=1.0, Pins(5)=500.0, Dist=179.0
+[2026-05-22 09:08:41] SCORE Filip (purple): Final=858.1, Time=78.1, Moves(45)=1.0, Pins(6)=600.0, Dist=179.0
+[2026-05-22 09:08:41] MOVE 91: Harald (yellow) 64->110 [0.00ms]
+[2026-05-22 09:08:41] SCORE Harald (yellow): Final=872.1, Time=91.1, Moves(46)=1.0, Pins(6)=600.0, Dist=180.0
+[2026-05-22 09:08:41] SCORE Filip (purple): Final=858.1, Time=78.1, Moves(45)=1.0, Pins(6)=600.0, Dist=179.0
+[2026-05-22 09:08:42] MOVE 92: Filip (purple) 38->37 [0.00ms]
+[2026-05-22 09:08:42] SCORE Harald (yellow): Final=872.1, Time=91.1, Moves(46)=1.0, Pins(6)=600.0, Dist=180.0
+[2026-05-22 09:08:42] SCORE Filip (purple): Final=858.7, Time=77.7, Moves(46)=1.0, Pins(6)=600.0, Dist=180.0
+[2026-05-22 09:08:42] MOVE 93: Harald (yellow) 41->52 [0.00ms]
+[2026-05-22 09:08:42] SCORE Harald (yellow): Final=873.0, Time=91.0, Moves(47)=1.0, Pins(6)=600.0, Dist=181.0
+[2026-05-22 09:08:42] SCORE Filip (purple): Final=858.7, Time=77.7, Moves(46)=1.0, Pins(6)=600.0, Dist=180.0
+[2026-05-22 09:08:42] MOVE 94: Filip (purple) 37->10 [0.00ms]
+[2026-05-22 09:08:42] SCORE Harald (yellow): Final=873.0, Time=91.0, Moves(47)=1.0, Pins(6)=600.0, Dist=181.0
+[2026-05-22 09:08:42] SCORE Filip (purple): Final=959.2, Time=77.2, Moves(47)=1.0, Pins(7)=700.0, Dist=181.0
+[2026-05-22 09:08:42] MOVE 95: Harald (yellow) 52->72 [0.00ms]
+[2026-05-22 09:08:42] SCORE Harald (yellow): Final=875.0, Time=91.0, Moves(48)=1.0, Pins(6)=600.0, Dist=183.0
+[2026-05-22 09:08:42] SCORE Filip (purple): Final=959.2, Time=77.2, Moves(47)=1.0, Pins(7)=700.0, Dist=181.0
+[2026-05-22 09:08:43] MOVE 96: Filip (purple) 62->52 [0.02ms]
+[2026-05-22 09:08:43] SCORE Harald (yellow): Final=875.0, Time=91.0, Moves(48)=1.0, Pins(6)=600.0, Dist=183.0
+[2026-05-22 09:08:43] SCORE Filip (purple): Final=959.7, Time=76.7, Moves(48)=1.0, Pins(7)=700.0, Dist=182.0
+[2026-05-22 09:08:43] MOVE 97: Harald (yellow) 72->83 [0.01ms]
+[2026-05-22 09:08:43] SCORE Harald (yellow): Final=875.9, Time=90.9, Moves(49)=1.0, Pins(6)=600.0, Dist=184.0
+[2026-05-22 09:08:43] SCORE Filip (purple): Final=959.7, Time=76.7, Moves(48)=1.0, Pins(7)=700.0, Dist=182.0
+[2026-05-22 09:08:43] MOVE 98: Filip (purple) 52->51 [0.00ms]
+[2026-05-22 09:08:43] SCORE Harald (yellow): Final=875.9, Time=90.9, Moves(49)=1.0, Pins(6)=600.0, Dist=184.0
+[2026-05-22 09:08:43] SCORE Filip (purple): Final=960.2, Time=76.2, Moves(49)=1.0, Pins(7)=700.0, Dist=183.0
+[2026-05-22 09:08:43] MOVE 99: Harald (yellow) 83->85 [0.01ms]
+[2026-05-22 09:08:43] SCORE Harald (yellow): Final=976.8, Time=90.8, Moves(50)=1.0, Pins(7)=700.0, Dist=185.0
+[2026-05-22 09:08:43] SCORE Filip (purple): Final=960.2, Time=76.2, Moves(49)=1.0, Pins(7)=700.0, Dist=183.0
+[2026-05-22 09:08:44] MOVE 100: Filip (purple) 51->40 [0.00ms]
+[2026-05-22 09:08:44] SCORE Harald (yellow): Final=976.8, Time=90.8, Moves(50)=1.0, Pins(7)=700.0, Dist=185.0
+[2026-05-22 09:08:44] SCORE Filip (purple): Final=960.6, Time=75.7, Moves(50)=1.0, Pins(7)=700.0, Dist=184.0
+[2026-05-22 09:08:44] MOVE 101: Harald (yellow) 45->55 [0.01ms]
+[2026-05-22 09:08:44] SCORE Harald (yellow): Final=977.2, Time=90.2, Moves(51)=0.9, Pins(7)=700.0, Dist=186.0
+[2026-05-22 09:08:44] SCORE Filip (purple): Final=960.6, Time=75.7, Moves(50)=1.0, Pins(7)=700.0, Dist=184.0
+[2026-05-22 09:08:45] MOVE 102: Filip (purple) 40->39 [0.01ms]
+[2026-05-22 09:08:45] SCORE Harald (yellow): Final=977.2, Time=90.2, Moves(51)=0.9, Pins(7)=700.0, Dist=186.0
+[2026-05-22 09:08:45] SCORE Filip (purple): Final=961.1, Time=75.2, Moves(51)=0.9, Pins(7)=700.0, Dist=185.0
+[2026-05-22 09:08:46] MOVE 103: Harald (yellow) 55->64 [0.01ms]
+[2026-05-22 09:08:46] SCORE Harald (yellow): Final=977.6, Time=89.6, Moves(52)=0.9, Pins(7)=700.0, Dist=187.0
+[2026-05-22 09:08:46] SCORE Filip (purple): Final=961.1, Time=75.2, Moves(51)=0.9, Pins(7)=700.0, Dist=185.0
+[2026-05-22 09:08:46] MOVE 104: Filip (purple) 39->38 [0.01ms]
+[2026-05-22 09:08:46] SCORE Harald (yellow): Final=977.6, Time=89.6, Moves(52)=0.9, Pins(7)=700.0, Dist=187.0
+[2026-05-22 09:08:46] SCORE Filip (purple): Final=961.5, Time=74.6, Moves(52)=0.9, Pins(7)=700.0, Dist=186.0
+[2026-05-22 09:08:47] MOVE 105: Harald (yellow) 58->59 [0.01ms]
+[2026-05-22 09:08:47] SCORE Harald (yellow): Final=978.0, Time=89.1, Moves(53)=0.9, Pins(7)=700.0, Dist=188.0
+[2026-05-22 09:08:47] SCORE Filip (purple): Final=961.5, Time=74.6, Moves(52)=0.9, Pins(7)=700.0, Dist=186.0
+[2026-05-22 09:08:47] MOVE 106: Filip (purple) 38->37 [0.01ms]
+[2026-05-22 09:08:47] SCORE Harald (yellow): Final=978.0, Time=89.1, Moves(53)=0.9, Pins(7)=700.0, Dist=188.0
+[2026-05-22 09:08:47] SCORE Filip (purple): Final=961.9, Time=74.0, Moves(53)=0.9, Pins(7)=700.0, Dist=187.0
+[2026-05-22 09:08:48] MOVE 107: Harald (yellow) 59->60 [0.01ms]
+[2026-05-22 09:08:48] SCORE Harald (yellow): Final=978.5, Time=88.6, Moves(54)=0.9, Pins(7)=700.0, Dist=189.0
+[2026-05-22 09:08:48] SCORE Filip (purple): Final=961.9, Time=74.0, Moves(53)=0.9, Pins(7)=700.0, Dist=187.0
+[2026-05-22 09:08:48] MOVE 108: Filip (purple) 37->12 [0.01ms]
+[2026-05-22 09:08:48] SCORE Harald (yellow): Final=978.5, Time=88.6, Moves(54)=0.9, Pins(7)=700.0, Dist=189.0
+[2026-05-22 09:08:48] SCORE Filip (purple): Final=1062.8, Time=74.0, Moves(54)=0.9, Pins(8)=800.0, Dist=188.0
+[2026-05-22 09:08:48] MOVE 109: Harald (yellow) 60->61 [0.01ms]
+[2026-05-22 09:08:48] SCORE Harald (yellow): Final=978.9, Time=88.1, Moves(55)=0.9, Pins(7)=700.0, Dist=190.0
+[2026-05-22 09:08:48] SCORE Filip (purple): Final=1062.8, Time=74.0, Moves(54)=0.9, Pins(8)=800.0, Dist=188.0
+[2026-05-22 09:08:48] MOVE 110: Filip (purple) 92->80 [0.01ms]
+[2026-05-22 09:08:48] SCORE Harald (yellow): Final=978.9, Time=88.1, Moves(55)=0.9, Pins(7)=700.0, Dist=190.0
+[2026-05-22 09:08:48] SCORE Filip (purple): Final=1063.8, Time=73.9, Moves(55)=0.9, Pins(8)=800.0, Dist=189.0
+[2026-05-22 09:08:49] MOVE 111: Harald (yellow) 61->62 [0.01ms]
+[2026-05-22 09:08:49] SCORE Harald (yellow): Final=979.4, Time=87.5, Moves(56)=0.8, Pins(7)=700.0, Dist=191.0
+[2026-05-22 09:08:49] SCORE Filip (purple): Final=1063.8, Time=73.9, Moves(55)=0.9, Pins(8)=800.0, Dist=189.0
+[2026-05-22 09:08:49] MOVE 112: Filip (purple) 80->78 [0.00ms]
+[2026-05-22 09:08:49] SCORE Harald (yellow): Final=979.4, Time=87.5, Moves(56)=0.8, Pins(7)=700.0, Dist=191.0
+[2026-05-22 09:08:49] SCORE Filip (purple): Final=1065.2, Time=73.4, Moves(56)=0.8, Pins(8)=800.0, Dist=191.0
+[2026-05-22 09:08:50] MOVE 113: Harald (yellow) 62->72 [0.01ms]
+[2026-05-22 09:08:50] SCORE Harald (yellow): Final=979.8, Time=87.0, Moves(57)=0.8, Pins(7)=700.0, Dist=192.0
+[2026-05-22 09:08:50] SCORE Filip (purple): Final=1065.2, Time=73.4, Moves(56)=0.8, Pins(8)=800.0, Dist=191.0
+[2026-05-22 09:08:51] MOVE 114: Filip (purple) 79->77 [0.01ms]
+[2026-05-22 09:08:51] SCORE Harald (yellow): Final=979.8, Time=87.0, Moves(57)=0.8, Pins(7)=700.0, Dist=192.0
+[2026-05-22 09:08:51] SCORE Filip (purple): Final=1066.6, Time=72.8, Moves(57)=0.8, Pins(8)=800.0, Dist=193.0
+[2026-05-22 09:08:51] MOVE 115: Harald (yellow) 72->83 [0.01ms]
+[2026-05-22 09:08:51] SCORE Harald (yellow): Final=980.1, Time=86.4, Moves(58)=0.8, Pins(7)=700.0, Dist=193.0
+[2026-05-22 09:08:51] SCORE Filip (purple): Final=1066.6, Time=72.8, Moves(57)=0.8, Pins(8)=800.0, Dist=193.0
+[2026-05-22 09:08:52] MOVE 116: Filip (purple) 78->76 [0.01ms]
+[2026-05-22 09:08:52] SCORE Harald (yellow): Final=980.1, Time=86.4, Moves(58)=0.8, Pins(7)=700.0, Dist=193.0
+[2026-05-22 09:08:52] SCORE Filip (purple): Final=1067.1, Time=72.3, Moves(58)=0.8, Pins(8)=800.0, Dist=194.0
+[2026-05-22 09:08:52] MOVE 117: Harald (yellow) 83->95 [0.01ms]
+[2026-05-22 09:08:52] SCORE Harald (yellow): Final=1081.0, Time=86.3, Moves(59)=0.7, Pins(8)=800.0, Dist=194.0
+[2026-05-22 09:08:52] SCORE Filip (purple): Final=1067.1, Time=72.3, Moves(58)=0.8, Pins(8)=800.0, Dist=194.0
+[2026-05-22 09:08:52] MOVE 118: Filip (purple) 76->66 [0.01ms]
+[2026-05-22 09:08:52] SCORE Harald (yellow): Final=1081.0, Time=86.3, Moves(59)=0.7, Pins(8)=800.0, Dist=194.0
+[2026-05-22 09:08:52] SCORE Filip (purple): Final=1067.5, Time=71.8, Moves(59)=0.7, Pins(8)=800.0, Dist=195.0
+[2026-05-22 09:08:52] MOVE 119: Harald (yellow) 18->31 [0.01ms]
+[2026-05-22 09:08:52] SCORE Harald (yellow): Final=1081.9, Time=86.2, Moves(60)=0.7, Pins(8)=800.0, Dist=195.0
+[2026-05-22 09:08:52] SCORE Filip (purple): Final=1067.5, Time=71.8, Moves(59)=0.7, Pins(8)=800.0, Dist=195.0
+[2026-05-22 09:08:53] MOVE 120: Filip (purple) 77->35 [0.01ms]
+[2026-05-22 09:08:53] SCORE Harald (yellow): Final=1081.9, Time=86.2, Moves(60)=0.7, Pins(8)=800.0, Dist=195.0
+[2026-05-22 09:08:53] SCORE Filip (purple): Final=1170.0, Time=71.3, Moves(60)=0.7, Pins(9)=900.0, Dist=198.0
+[2026-05-22 09:08:53] MOVE 121: Harald (yellow) 31->43 [0.01ms]
+[2026-05-22 09:08:53] SCORE Harald (yellow): Final=1082.8, Time=86.2, Moves(61)=0.7, Pins(8)=800.0, Dist=196.0
+[2026-05-22 09:08:53] SCORE Filip (purple): Final=1170.0, Time=71.3, Moves(60)=0.7, Pins(9)=900.0, Dist=198.0
+[2026-05-22 09:08:53] MOVE 122: Filip (purple) 66->56 [0.01ms]
+[2026-05-22 09:08:53] SCORE Harald (yellow): Final=1082.8, Time=86.2, Moves(61)=0.7, Pins(8)=800.0, Dist=196.0
+[2026-05-22 09:08:53] SCORE Filip (purple): Final=1170.4, Time=70.7, Moves(61)=0.7, Pins(9)=900.0, Dist=199.0
+[2026-05-22 09:08:54] MOVE 123: Harald (yellow) 43->54 [0.01ms]
+[2026-05-22 09:08:54] SCORE Harald (yellow): Final=1083.2, Time=85.5, Moves(62)=0.6, Pins(8)=800.0, Dist=197.0
+[2026-05-22 09:08:54] SCORE Filip (purple): Final=1170.4, Time=70.7, Moves(61)=0.7, Pins(9)=900.0, Dist=199.0
+[2026-05-22 09:08:55] MOVE 124: Filip (purple) 56->47 [0.01ms]
+[2026-05-22 09:08:55] SCORE Harald (yellow): Final=1083.2, Time=85.5, Moves(62)=0.6, Pins(8)=800.0, Dist=197.0
+[2026-05-22 09:08:55] SCORE Filip (purple): Final=1169.8, Time=70.2, Moves(62)=0.6, Pins(9)=900.0, Dist=199.0
+[2026-05-22 09:08:55] MOVE 125: Harald (yellow) 54->63 [0.01ms]
+[2026-05-22 09:08:55] SCORE Harald (yellow): Final=1083.1, Time=85.5, Moves(63)=0.6, Pins(8)=800.0, Dist=197.0
+[2026-05-22 09:08:55] SCORE Filip (purple): Final=1169.8, Time=70.2, Moves(62)=0.6, Pins(9)=900.0, Dist=199.0
+[2026-05-22 09:08:55] MOVE 126: Filip (purple) 47->36 [0.01ms]
+[2026-05-22 09:08:55] SCORE Harald (yellow): Final=1083.1, Time=85.5, Moves(63)=0.6, Pins(8)=800.0, Dist=197.0
+[2026-05-22 09:08:55] SCORE Filip (purple): Final=1270.3, Time=69.7, Moves(63)=0.6, Pins(10)=1000.0, Dist=200.0

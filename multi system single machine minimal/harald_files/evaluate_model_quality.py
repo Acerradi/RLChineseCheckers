@@ -185,6 +185,19 @@ def placement_score(rank: int, num_players: int) -> float:
     return max(0.0, min(1.0, (num_players - rank) / (num_players - 1)))
 
 
+def opponent_label_for_player(scenario: str, player_name: str) -> str:
+    if scenario.startswith("vs_checkpoint:") and player_name == "opponent":
+        return scenario.replace("vs_checkpoint:", "checkpoint:")
+
+    if player_name.startswith("random"):
+        return "random"
+
+    if player_name.startswith("heuristic"):
+        return "heuristic"
+
+    return player_name
+
+
 def extract_game_metrics(*,
                          result: Dict[str, Any],
                          target_name: str,
@@ -204,6 +217,53 @@ def extract_game_metrics(*,
     progress_place = placement_score(progress_rank, num_players)
     final_score_place = placement_score(final_score_rank, num_players)
     performance_score = 0.70 * progress_place + 0.30 * final_score_place
+    target_final_score = float(score.get("final_score", 0.0))
+    target_progress = player_metric(state, colour, "training_progress")
+
+    opponent_comparisons = []
+    for player in state["players"]:
+        if player["name"] == target_name:
+            continue
+
+        opponent_colour = player["colour"]
+        opponent_score = float(result["scores"].get(opponent_colour, {}).get("final_score", 0.0))
+        opponent_progress = player_metric(state, opponent_colour, "training_progress")
+
+        if target_final_score > opponent_score:
+            score_result = "better"
+            score_points = 1.0
+        elif target_final_score == opponent_score:
+            score_result = "tie"
+            score_points = 0.5
+        else:
+            score_result = "worse"
+            score_points = 0.0
+
+        if target_progress > opponent_progress:
+            progress_result = "better"
+            progress_points = 1.0
+        elif target_progress == opponent_progress:
+            progress_result = "tie"
+            progress_points = 0.5
+        else:
+            progress_result = "worse"
+            progress_points = 0.0
+
+        opponent_comparisons.append({
+            "opponent": opponent_label_for_player(scenario, player["name"]),
+            "opponent_name": player["name"],
+            "opponent_colour": opponent_colour,
+            "target_final_score": target_final_score,
+            "opponent_final_score": opponent_score,
+            "final_score_margin": target_final_score - opponent_score,
+            "score_result": score_result,
+            "score_points": score_points,
+            "target_training_progress": target_progress,
+            "opponent_training_progress": opponent_progress,
+            "progress_margin": target_progress - opponent_progress,
+            "progress_result": progress_result,
+            "progress_points": progress_points,
+        })
 
     return {
         "seed": seed,
@@ -218,14 +278,14 @@ def extract_game_metrics(*,
         "chance_adjusted_win_value": float(num_players if target_player["status"] == "WIN" else 0.0),
         "chance_adjusted_loss_value": float(1.0 / (1.0 - (1.0 / num_players))
                                             if target_player["status"] not in ("WIN", "DRAW") else 0.0),
-        "final_score": float(score.get("final_score", 0.0)),
+        "final_score": target_final_score,
         "pin_goal_score": float(score.get("pin_goal_score", 0.0)),
         "distance_score": float(score.get("distance_score", 0.0)),
         "move_score": float(score.get("move_score", 0.0)),
         "target_moves": float(score.get("moves", 0.0)),
         "pins_in_goal": float(score.get("pins_in_goal", 0.0)),
         "total_distance": float(score.get("total_distance", 0.0)),
-        "training_progress": player_metric(state, colour, "training_progress"),
+        "training_progress": target_progress,
         "progress_rank": progress_rank,
         "progress_placement_score": progress_place,
         "final_score_rank": final_score_rank,
@@ -240,6 +300,7 @@ def extract_game_metrics(*,
         "truncated": bool(result.get("truncated", False)),
         "adjudication_reason": state.get("adjudication_reason"),
         "illegal_attempts": int(result.get("illegal_attempts", 0)),
+        "opponent_comparisons": opponent_comparisons,
     }
 
 
@@ -445,6 +506,56 @@ def aggregate_summaries(items: List[Dict[str, Any]]) -> Dict[str, Any]:
     }
 
 
+def collect_opponent_comparisons(items: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    comparisons = []
+    for item in items:
+        for game in item["games"]:
+            for comparison in game.get("opponent_comparisons", []):
+                row = dict(comparison)
+                row["scenario"] = item["scenario"]
+                row["num_players"] = item["num_players"]
+                row["seed"] = game["seed"]
+                comparisons.append(row)
+    return comparisons
+
+
+def summarize_opponent_comparisons(comparisons: List[Dict[str, Any]]) -> Dict[str, Any]:
+    if not comparisons:
+        return {"pairings": 0}
+
+    return {
+        "pairings": len(comparisons),
+        "score_outperform_rate": safe_mean(float(row["score_points"]) for row in comparisons),
+        "score_strict_better_rate": safe_mean(1.0 if row["score_result"] == "better" else 0.0
+                                               for row in comparisons),
+        "score_tie_rate": safe_mean(1.0 if row["score_result"] == "tie" else 0.0
+                                    for row in comparisons),
+        "score_worse_rate": safe_mean(1.0 if row["score_result"] == "worse" else 0.0
+                                      for row in comparisons),
+        "avg_final_score_margin": safe_mean(float(row["final_score_margin"]) for row in comparisons),
+        "std_final_score_margin": safe_std(float(row["final_score_margin"]) for row in comparisons),
+        "progress_outperform_rate": safe_mean(float(row["progress_points"]) for row in comparisons),
+        "progress_strict_better_rate": safe_mean(1.0 if row["progress_result"] == "better" else 0.0
+                                                  for row in comparisons),
+        "progress_tie_rate": safe_mean(1.0 if row["progress_result"] == "tie" else 0.0
+                                       for row in comparisons),
+        "progress_worse_rate": safe_mean(1.0 if row["progress_result"] == "worse" else 0.0
+                                         for row in comparisons),
+        "avg_progress_margin": safe_mean(float(row["progress_margin"]) for row in comparisons),
+        "std_progress_margin": safe_std(float(row["progress_margin"]) for row in comparisons),
+    }
+
+
+def build_opponent_comparison_table(items: List[Dict[str, Any]]) -> Dict[str, Dict[str, Any]]:
+    comparisons = collect_opponent_comparisons(items)
+    grouped: Dict[str, List[Dict[str, Any]]] = {}
+    for comparison in comparisons:
+        grouped.setdefault(comparison["opponent"], []).append(comparison)
+
+    return {opponent: summarize_opponent_comparisons(rows)
+            for opponent, rows in sorted(grouped.items())}
+
+
 def compact_row(item: Dict[str, Any]) -> Dict[str, Any]:
     summary = item["summary"]
     return {
@@ -503,6 +614,8 @@ def build_compact_summary(report: Dict[str, Any]) -> Dict[str, Any]:
     for scenario in sorted({item["scenario"] for item in results}):
         by_scenario[scenario] = aggregate_summaries([item for item in results if item["scenario"] == scenario])
 
+    by_opponent = build_opponent_comparison_table(results)
+
     by_player_count = {}
     for players in sorted({item["num_players"] for item in results}):
         by_player_count[str(players)] = aggregate_summaries([item for item in results if item["num_players"] == players])
@@ -517,6 +630,7 @@ def build_compact_summary(report: Dict[str, Any]) -> Dict[str, Any]:
         "baseline_opponents": baseline,
         "checkpoint_opponents": checkpoint,
         "by_scenario": by_scenario,
+        "by_opponent": by_opponent,
         "by_player_count": by_player_count,
         "best_case": best,
         "worst_case": worst,
@@ -585,20 +699,23 @@ def format_compact_markdown(summary: Dict[str, Any]) -> str:
         lines.append("")
 
     lines.extend([
-        "## Scenario Averages",
+        "## Opponent Comparisons",
         "",
-        "| Scenario | Games | Win | Adj Win | Avg Rank | Place | Perf | Top Half | Loss | Cap | Score | Progress |",
-        "|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|",
+        "Each row compares the target directly against every opponent of that type/model it faced. "
+        "`Score Better` is the main head-to-head quality metric: 100% means the target always had a strictly higher final score than that opponent.",
+        "",
+        "| Opponent | Pairings | Score Better | Score Tie | Score Worse | Avg Score Margin | Progress Better | Avg Progress Margin |",
+        "|---|---:|---:|---:|---:|---:|---:|---:|",
     ])
-    for scenario, data in summary["by_scenario"].items():
+    for opponent, data in summary["by_opponent"].items():
         lines.append(
-            f"| `{scenario}` | {data.get('games', 0)} | {pct(data.get('win_rate', 0.0))} | "
-            f"{data.get('chance_adjusted_win_rate', 0.0):.2f}x | "
-            f"{data.get('avg_progress_rank', 0.0):.2f} | {data.get('avg_progress_placement_score', 0.0):.3f} | "
-            f"{data.get('avg_performance_score', 0.0):.3f} | {pct(data.get('top_half_rate', 0.0))} | "
-            f"{pct(data.get('loss_rate', 0.0))} | "
-            f"{pct(data.get('truncation_rate', 0.0))} | {data.get('avg_final_score', 0.0):.1f} | "
-            f"{data.get('avg_training_progress', 0.0):.1f} |"
+            f"| `{opponent}` | {data.get('pairings', 0)} | "
+            f"{pct(data.get('score_strict_better_rate', 0.0))} | "
+            f"{pct(data.get('score_tie_rate', 0.0))} | "
+            f"{pct(data.get('score_worse_rate', 0.0))} | "
+            f"{data.get('avg_final_score_margin', 0.0):.1f} | "
+            f"{pct(data.get('progress_strict_better_rate', 0.0))} | "
+            f"{data.get('avg_progress_margin', 0.0):.1f} |"
         )
 
     lines.extend([
@@ -661,7 +778,7 @@ def main() -> None:
     #   TARGETCHECKPOINT = None
     #   SUMMARYOUT = "eval_reports/model_quality_summary_heuristic.md"
     #   SUMMARYJSONOUT = "eval_reports/model_quality_summary_heuristic.json"
-    TARGETKIND = "heuristic"  # "checkpoint", "heuristic", or "random"
+    TARGETKIND = "checkpoint"  # "checkpoint", "heuristic", or "random"
     TARGETCHECKPOINT = "checkpoints/gnn_h128_l4/self_play/shared_model_final.pt"
     OPPONENTCHECKPOINTS = ["checkpoints/gnn_h128_l4/bootstrap/shared_model_final.pt",
                            "checkpoints/gnn_h128_l4/self_play/champion.pt"]
@@ -674,8 +791,8 @@ def main() -> None:
     HIDDENDIM = None
     NUMLAYERS = None
     FILL = "heuristic"  # "heuristic" or "random"
-    SUMMARYOUT = "eval_reports/model_quality_summary_heuristic.md"
-    SUMMARYJSONOUT = "eval_reports/model_quality_summary_heuristic.json"
+    SUMMARYOUT = "eval_reports/model_quality_summary_checkpoint.md"
+    SUMMARYJSONOUT = "eval_reports/model_quality_summary_checkpoint.json"
     WRITEDETAILEDREPORTS = False
     JSONOUT = "eval_reports/model_quality_report.json"
     JSONLOUT = "eval_reports/model_quality_games.jsonl"
